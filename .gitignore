@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Google Cloud / Firebase Admin credentials
+ServiceAccountKey.json
+*serviceAccount*.json
+*firebase-adminsdk*.json
+*-credentials.json
+google-services.json
+
+# Private keys and certs
+*.pem
+*.p12
+*.pfx
+*.key
+!*.example.key
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build output
+dist/
+dist-ssr/
+build/
+coverage/
+*.local
+
+# OS and editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
