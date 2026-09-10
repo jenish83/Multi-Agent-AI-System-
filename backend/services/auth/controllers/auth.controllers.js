@@ -3,6 +3,13 @@ import app from "../config/firebase.js";
 import User from "../models/user.model.js";
 import redis from "../../../shared/redis/redis.js";
 
+const sessionCookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+};
+
 // Login controller
 export const login = async (req, res) => {
     try {
@@ -38,11 +45,8 @@ export const login = async (req, res) => {
         }), "EX", sessionTtlSeconds);
 
         res.cookie("sessionId", sessionId, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
+            ...sessionCookieOptions,
             maxAge: sessionTtlSeconds * 1000,
-            sameSite: "lax",
-            path: "/",
         });
 
         return res.status(200).json({ message: "Login successful", user, sessionId });
@@ -57,14 +61,17 @@ export const login = async (req, res) => {
 
 // Logout controller
 export const logout = async (req, res) => {
-    try{
+    try {
         const sessionId = req.cookies?.sessionId;
-        await redis.del(`session:${sessionId}`);
+        if (sessionId) {
+            await redis.del(`session:${sessionId}`);
+        }
 
-        res.clearCookie("sessionId", { path: "/" });
+        // Options must match the original cookie or the browser will keep it
+        res.clearCookie("sessionId", sessionCookieOptions);
         return res.status(200).json({ message: "Logout successful" });
-    }catch(error){
+    } catch (error) {
         console.error("Logout error:", error);
         return res.status(500).json({ message: error.message });
     }
-}
+};

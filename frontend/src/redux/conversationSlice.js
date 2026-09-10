@@ -4,6 +4,7 @@ const conversationSlice = createSlice({
     name: "conversation",
     initialState: {
         conversations: [],
+        selectedConversation: null,
     },
     reducers: {
         setConversations: (state, action) => {
@@ -13,16 +14,22 @@ const conversationSlice = createSlice({
             state.conversations.unshift(action.payload);
         },
         updateConversation: (state, action) => {
-            state.conversations = state.conversations.map(conversation => conversation.id === action.payload.id ? action.payload : conversation);
+            state.conversations = state.conversations.map(conversation => conversation._id === action.payload._id ? action.payload : conversation);
         },
         deleteConversation: (state, action) => {
-            state.conversations = state.conversations.filter(conversation => conversation.id !== action.payload.id);
+            state.conversations = state.conversations.filter(conversation => conversation._id !== action.payload._id);
         },
         clearConversations: (state) => {
             state.conversations = [];
         },
+        setSelectedConversation: (state, action) => {
+            state.selectedConversation = action.payload;
+        },
+        clearSelectedConversation: (state) => {
+            state.selectedConversation = null;
+        },
     },
 })
 
-export const { setConversations, addConversation, updateConversation, deleteConversation, clearConversations } = conversationSlice.actions;
+export const { setConversations, addConversation, updateConversation, deleteConversation, clearConversations, setSelectedConversation, clearSelectedConversation } = conversationSlice.actions;
 export default conversationSlice.reducer;

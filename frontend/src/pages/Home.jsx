@@ -17,7 +17,7 @@ const Home = () => {
     try {
       const { data } = await api.post("/api/auth/login", { token });
       console.log(data);
-      dispatch(setUserData(data));
+      dispatch(setUserData(data.user));
     } catch (error) {
       console.error(error);
     }
