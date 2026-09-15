@@ -41,17 +41,42 @@ export const getConversations = async (req, res) => {
 
 export const updateConversation = async (req, res) => {
     try {
-        const { conversationId } = req.body;
-        const conversation = await Conversation.findByIdAndUpdate(conversationId, { updatedAt: new Date() }, { new: true });
+        const { conversationId, title } = req.body;
+
+        if (!conversationId) {
+            return res.status(400).json({
+                success: false,
+                message: "conversationId is required",
+            });
+        }
+
+        const updates = {};
+        if (typeof title === "string" && title.trim()) {
+            updates.title = title.trim();
+        }
+
+        const conversation = await Conversation.findByIdAndUpdate(
+            conversationId,
+            Object.keys(updates).length ? updates : { updatedAt: new Date() },
+            { new: true }
+        );
+
+        if (!conversation) {
+            return res.status(404).json({
+                success: false,
+                message: "Conversation not found",
+            });
+        }
+
         return res.status(200).json({
             success: true,
             conversation,
-        })
+        });
     } catch (error) {
         return res.status(500).json({
             success: false,
             message: `Failed to update conversation: ${error.message}`,
-        })
+        });
     }
 }
 

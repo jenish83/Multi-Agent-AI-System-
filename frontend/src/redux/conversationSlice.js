@@ -14,7 +14,14 @@ const conversationSlice = createSlice({
             state.conversations.unshift(action.payload);
         },
         updateConversation: (state, action) => {
-            state.conversations = state.conversations.map(conversation => conversation._id === action.payload._id ? action.payload : conversation);
+            const updated = action.payload;
+            state.conversations = [
+                updated,
+                ...state.conversations.filter((conversation) => conversation._id !== updated._id),
+            ];
+            if (state.selectedConversation?._id === updated._id) {
+                state.selectedConversation = updated;
+            }
         },
         deleteConversation: (state, action) => {
             const id = action.payload._id;

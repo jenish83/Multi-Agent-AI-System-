@@ -1,17 +1,37 @@
-import { Mic, Paperclip, Send } from "lucide-react";
+import { Code2, FileText, Globe, Image as ImageIcon, MessageSquare, Mic, Paperclip, Presentation, Send, Zap } from "lucide-react";
 import React, { useState } from "react";
 import sendMessage from "../features/sendMessage";
 import { createConversation } from "../features/createConversation";
+import { updateConversation as saveConversationTitle } from "../features/updateConversation";
 import getMessages from "../features/getMessages";
 import { useDispatch, useSelector } from "react-redux";
 import {
   addConversation,
   setSelectedConversation,
+  updateConversation,
 } from "../redux/conversationSlice";
 import { setMessages } from "../redux/messageSlice";
 
+const DEFAULT_TITLE = "New Conversation";
+
+const isDefaultTitle = (title) =>
+  !title || title.trim().toLowerCase() === DEFAULT_TITLE.toLowerCase();
+
+const titleFromChat = (prompt) => {
+  const cleaned = prompt.replace(/\s+/g, " ").trim();
+  if (!cleaned) return DEFAULT_TITLE;
+
+  const withoutTrailingPunctuation = cleaned.replace(/[?!.]+$/g, "").trim();
+  const words = withoutTrailingPunctuation.split(" ").slice(0, 8);
+  const snippet = words.join(" ");
+  const titled = snippet.charAt(0).toUpperCase() + snippet.slice(1);
+
+  return titled.length > 48 ? `${titled.slice(0, 45).trim()}…` : titled;
+};
+
 const ChatInput = () => {
 
+  const [selectedAgent, setSelectedAgent] = useState("auto");
   const [value, setValue] = useState("");
   const [sending, setSending] = useState(false);
   const dispatch = useDispatch();
@@ -24,9 +44,11 @@ const ChatInput = () => {
     const payload = {
       prompt,
       conversationId: selectedConversation?._id,
-    }
+    };
+    let conversation = selectedConversation;
+
     if (!payload.conversationId) {
-      const conversation = await createConversation();
+      conversation = await createConversation();
       if (!conversation?._id) return;
       dispatch(addConversation(conversation));
       dispatch(setSelectedConversation(conversation));
@@ -34,19 +56,99 @@ const ChatInput = () => {
     }
 
     setSending(true);
-    const data = await sendMessage(payload || {});
+    const data = await sendMessage(payload);
     setSending(false);
     if (!data) return;
 
     setValue("");
+
+    if (isDefaultTitle(conversation?.title)) {
+      const updated = await saveConversationTitle({
+        conversationId: payload.conversationId,
+        title: titleFromChat(prompt),
+      });
+      if (updated) {
+        dispatch(updateConversation(updated));
+      }
+    }
+
     const messages = await getMessages(payload.conversationId);
     dispatch(setMessages(messages || []));
   }
+
+  const agents = [ 
+    {
+      id: "auto",
+      icon: Zap,
+      label: "Auto",
+      description: "Auto-generate a response based on the conversation history",
+    },
+    {
+      id: "chat",
+      icon: MessageSquare,
+      label: "Chat",
+      description: "Chat with the user based on the conversation history",
+    },
+    {
+      id: "coding",
+      icon: Code2,
+      label: "Coding",
+      description: "Code a response based on the conversation history",
+    },
+    {
+      id: "pdf",
+      icon: FileText,
+      label: "PDF",
+      description: "Read a PDF file and answer questions about it",
+    },
+    {
+      id: "ppt",
+      icon: Presentation,
+      label: "PPT",
+      description: "Read a PPT file and answer questions about it",
+    },
+    {
+      id: "image",
+      icon: ImageIcon,
+      label: "Image",
+      description: "Read an image and answer questions about it",
+    },{
+      id: "Search",
+      icon: Globe,
+      label: "Search",
+      description: "Search the web for information",
+    }
+]
 
 
   return (
     <div className="w-full shrink-0 overflow-hidden px-3 sm:px-5 py-3 sm:py-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t border-white/[0.06] bg-[#0d0f14]">
       <div className="mx-auto w-full max-w-3xl flex flex-col gap-2 bg-white/[0.03] border border-white/[0.07] rounded-2xl px-3 sm:px-4 pt-3 pb-2.5">
+
+
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {agents.map((agent) => {
+          const isActive = selectedAgent === agent.id;
+          const Icon = agent.icon;
+
+          return (
+            <button
+              type="button"
+              key={agent.id}
+              title={agent.description}
+              onClick={() => setSelectedAgent(agent.id)}
+              className={`flex items-center gap-1.5 shrink-0 h-7 px-2.5 rounded-full border text-[12px] font-medium tracking-tight whitespace-nowrap transition-all duration-150 cursor-pointer ${
+                isActive
+                  ? "bg-white/[0.08] border-white/[0.12] text-slate-100"
+                  : "bg-transparent border-transparent text-slate-500 hover:text-slate-300 hover:bg-white/[0.05] hover:border-white/[0.06]"
+              }`}
+            >
+              <Icon size={13} className={isActive ? "text-indigo-400" : "text-slate-500"} />
+              <span>{agent.label}</span>
+            </button>
+          )
+        })}
+      </div>
         <textarea
           onChange={ (e) => setValue(e.target.value) }
           value={value}
