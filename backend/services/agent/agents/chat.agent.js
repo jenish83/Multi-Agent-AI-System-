@@ -1,4 +1,6 @@
 import { getModel } from "../config/llmModels.js";
+import { getMemory } from "../config/memory.js";
+import { SystemMessage, HumanMessage, AIMessage } from "@langchain/core/messages";
 
 const toText = (content) => {
     if (typeof content === "string") return content;
@@ -15,6 +17,10 @@ const toText = (content) => {
 
 export const chatAgent = async (state) => {
     const llm = await getModel("chat");
+
+    const history = Array.isArray(state.memory)
+        ? state.memory
+        : await getMemory(state.conversationId);
 
     const systemPrompt = `
 You are NexoraAI, an intelligent, reliable, and helpful AI assistant.
@@ -115,16 +121,25 @@ Your answer should be:
 Always answer the user's actual question rather than blindly following assumptions contained in the question.
 `;
 
-    const response = await llm.invoke([
-        {
-            role: "system",
-            content: systemPrompt,
-        },
-        {
-            role: "human",
-            content: state.prompt,
-        },
-    ]);
+    const messages = [new SystemMessage(systemPrompt)];
+
+    for (const message of history) {
+        const content = toText(message?.content).trim();
+        if (!content) continue;
+
+        if (message.role === "user") {
+            messages.push(new HumanMessage(content));
+        } else if (message.role === "assistant" || message.role === "ai") {
+            messages.push(new AIMessage(content));
+        }
+    }
+
+    const last = messages[messages.length - 1];
+    if (!(last instanceof HumanMessage) || last.content !== state.prompt) {
+        messages.push(new HumanMessage(state.prompt));
+    }
+
+    const response = await llm.invoke(messages);
 
     return {
         ...state,
