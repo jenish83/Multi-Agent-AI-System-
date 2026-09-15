@@ -1,5 +1,5 @@
-// Must run before any module that reads process.env at import time (e.g. redis).
-import "dotenv/config";
+// Must run first so backend/services/agent/.env wins over a stale Windows GROQ_API_KEY.
+import "./config/env.js";
 import express from "express";
 import connectDB from "./config/db.js";
 import router from "./routes/agent.route.js";

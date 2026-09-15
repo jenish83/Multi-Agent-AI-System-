@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { auth, googleProvider } from "../../utils/firebase";
 import { signInWithPopup } from "firebase/auth";
@@ -12,6 +12,9 @@ import Artifect from "../components/Artifect";
 const Home = () => {
   const { userData } = useSelector((state) => state.user);
   const dispatch = useDispatch();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth < 1024 : false,
+  );
 
   const handleLogin = async (token) => {
     try {
@@ -36,8 +39,13 @@ const Home = () => {
   };
   return (
     <div className="h-screen flex bg-[#0d0f14] text-white overflow-hidden">
-      <SideBar />
-      <ChatArea />
+      <SideBar
+        collapsed={sidebarCollapsed}
+        onCollapsedChange={setSidebarCollapsed}
+      />
+      <ChatArea
+        onToggleSidebar={() => setSidebarCollapsed((collapsed) => !collapsed)}
+      />
       <Artifect />
 
 

@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 import { protect } from "./middleware/auth.middleware.js";
 import { getCurrentUser } from "./controllers/user.controller.js";
 import { proxyWithHeader } from "./utils/proxyWithHeader.js";
+import morgan from "morgan";
 const port = process.env.PORT || 8000;
 
 const app = express();
@@ -14,6 +15,7 @@ app.use(cors({
     credentials: true,
 }));
 
+app.use(morgan("dev"));
 // cookie parser is used to parse the cookie header and make it available on req.cookies
 app.use(cookieParser());
 // Proxy before express.json() so the request body is not consumed first

@@ -17,7 +17,11 @@ const conversationSlice = createSlice({
             state.conversations = state.conversations.map(conversation => conversation._id === action.payload._id ? action.payload : conversation);
         },
         deleteConversation: (state, action) => {
-            state.conversations = state.conversations.filter(conversation => conversation._id !== action.payload._id);
+            const id = action.payload._id;
+            state.conversations = state.conversations.filter(conversation => conversation._id !== id);
+            if (state.selectedConversation?._id === id) {
+                state.selectedConversation = null;
+            }
         },
         clearConversations: (state) => {
             state.conversations = [];

@@ -93,3 +93,35 @@ export const getMessages = async (req, res) => {
         })
     }
 }
+
+export const deleteConversation = async (req, res) => {
+    try {
+        const userId = req.headers['x-user-id'];
+        const { conversationId } = req.params;
+
+        const conversation = await Conversation.findOne({
+            _id: conversationId,
+            userId,
+        });
+
+        if (!conversation) {
+            return res.status(404).json({
+                success: false,
+                message: "Conversation not found",
+            });
+        }
+
+        await Message.deleteMany({ conversationId });
+        await Conversation.findByIdAndDelete(conversationId);
+
+        return res.status(200).json({
+            success: true,
+            conversationId,
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: `Failed to delete conversation: ${error.message}`,
+        });
+    }
+}

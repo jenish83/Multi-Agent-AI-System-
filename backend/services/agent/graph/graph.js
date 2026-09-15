@@ -34,7 +34,7 @@ workflow.addConditionalEdges("router" , (state)=> {
         case "imageGen":
             return "imageGen";
         default:
-            return "router";
+            return "chat";
     }
 }, {
     chat: "chat",

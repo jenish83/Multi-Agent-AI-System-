@@ -1,3 +1,3 @@
-export const searchAgent = async (params) => {
-    
+export const searchAgent = async (state) => {
+    return { ...state };
 }

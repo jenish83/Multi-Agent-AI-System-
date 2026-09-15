@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import Home from './pages/Home';
-import getCurrentUser from './features/getcurrentuser';
+import getCurrentUser from './features/getCurrentUser';
 import { useDispatch } from 'react-redux';
 import { setUserData } from './redux/userSlice';
 
