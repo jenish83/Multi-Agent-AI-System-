@@ -1,18 +1,20 @@
 import axios from "axios";
 import graph from "../graph/graph.js";
 import { addMessage, getMemory } from "../config/memory.js";
+import { resolveRequestedAgent } from "../graph/router.js";
 
-const saveToChat = async (conversationId, role, content) => {
+const saveToChat = async (conversationId, role, content, images) => {
     await axios.post(`${process.env.CHAT_SERVICE}/save-message`, {
         conversationId,
         role,
         content,
+        images,
     });
 };
 
 export const agent = async (req, res) => {
     try {
-        const { prompt, conversationId } = req.body;
+        const { prompt, conversationId, agent: requestedAgent } = req.body;
 
         await Promise.all([
             addMessage(conversationId, { role: "user", content: prompt }),
@@ -23,18 +25,23 @@ export const agent = async (req, res) => {
             prompt,
             conversationId,
             memory: await getMemory(conversationId),
+            agent: resolveRequestedAgent(requestedAgent),
         });
 
         const response = result.aiResponse;
 
+        const images = Array.isArray(result.images) ? result.images.filter(Boolean) : [];
+
         await Promise.all([
             addMessage(conversationId, { role: "assistant", content: response }),
-            saveToChat(conversationId, "assistant", response),
+            saveToChat(conversationId, "assistant", response, images),
         ]);
 
         return res.status(200).json({
             message: response,
             conversationId,
+            images,
+            searchResults: result.searchResults,
         });
     } catch (error) {
         console.error("AGENT ERROR:", error.message);

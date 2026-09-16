@@ -42,6 +42,7 @@ const ChatInput = () => {
     if (!prompt || sending) return;
 
     const payload = {
+      agent: selectedAgent.toLowerCase(),
       prompt,
       conversationId: selectedConversation?._id,
     };
@@ -57,6 +58,7 @@ const ChatInput = () => {
 
     setSending(true);
     const data = await sendMessage(payload);
+
     setSending(false);
     if (!data) return;
 
@@ -73,8 +75,17 @@ const ChatInput = () => {
     }
 
     const messages = await getMessages(payload.conversationId);
-    dispatch(setMessages(messages || []));
-  }
+    const apiImages = Array.isArray(data.images) ? data.images.filter(Boolean) : [];
+    const nextMessages = (messages || []).map((message, index, list) => {
+      const isLastAssistant =
+        index === list.length - 1 && message.role === "assistant";
+      if (!isLastAssistant || message.images?.length || !apiImages.length) {
+        return message;
+      }
+      return { ...message, images: apiImages };
+    });
+    dispatch(setMessages(nextMessages));
+  };
 
   const agents = [ 
     {
@@ -88,6 +99,12 @@ const ChatInput = () => {
       icon: MessageSquare,
       label: "Chat",
       description: "Chat with the user based on the conversation history",
+    },
+    {
+      id: "search",
+      icon: Globe,
+      label: "Search",
+      description: "Search the web for information",
     },
     {
       id: "coding",
@@ -112,11 +129,6 @@ const ChatInput = () => {
       icon: ImageIcon,
       label: "Image",
       description: "Read an image and answer questions about it",
-    },{
-      id: "Search",
-      icon: Globe,
-      label: "Search",
-      description: "Search the web for information",
     }
 ]
 
@@ -124,7 +136,6 @@ const ChatInput = () => {
   return (
     <div className="w-full shrink-0 overflow-hidden px-3 sm:px-5 py-3 sm:py-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t border-white/[0.06] bg-[#0d0f14]">
       <div className="mx-auto w-full max-w-3xl flex flex-col gap-2 bg-white/[0.03] border border-white/[0.07] rounded-2xl px-3 sm:px-4 pt-3 pb-2.5">
-
 
       <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {agents.map((agent) => {

@@ -22,8 +22,30 @@ export const chatAgent = async (state) => {
         ? state.memory
         : await getMemory(state.conversationId);
 
+    const searchText =
+        typeof state.searchResults === "string"
+            ? state.searchResults.trim()
+            : "";
+
+    const searchContext = searchText
+        ? `
+## Live web search results
+You have live web search results and an authoritative current UTC datetime below.
+Use them to answer the user's question.
+For current time or date questions, convert from the authoritative UTC datetime into the requested timezone and give the actual local time. Prefer that UTC datetime over any clock time found in search snippets, because web snippets can be stale.
+Do not say you lack real-time access when this live context is present.
+Ignore earlier messages in this chat that claimed you cannot access the current time.
+Do not mention internal tools.
+
+${searchText}
+`
+        : "";
+
     const systemPrompt = `
 You are NexoraAI, an intelligent, reliable, and helpful AI assistant.
+
+${searchContext}
+
 
 ## Identity
 - Your name is NexoraAI.

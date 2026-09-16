@@ -51,6 +51,7 @@ const MessageList = () => {
                 key={message._id}
                 role={message.role}
                 content={message.content}
+                images={message.images || []  }
               />
             );
           })}

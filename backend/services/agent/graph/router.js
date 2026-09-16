@@ -1,6 +1,18 @@
 import { getModel } from "../config/llmModels.js";
 
 const AGENTS = ["chat", "search", "coding", "pdf", "ppt", "imageGen"];
+const AUTO_AGENTS = new Set(["agent", "auto", ""]);
+
+const LIVE_SEARCH_RE =
+    /\b(current time|what(?:'s| is) the time|time (?:in|now|right now)|right now|latest news|breaking news|weather|stock price|live (?:score|update)|who won)\b/i;
+
+export const resolveRequestedAgent = (agent) => {
+    const key = String(agent ?? "agent").trim().toLowerCase();
+    if (key === "image") return "imageGen";
+    if (key === "imagegen") return "imageGen";
+    if (AGENTS.includes(key)) return key;
+    return "agent";
+};
 
 const pickAgent = (content) => {
     const text = String(content ?? "").trim().toLowerCase();
@@ -8,13 +20,21 @@ const pickAgent = (content) => {
 };
 
 export const router = async (state) => {
+    if (state.agent && !AUTO_AGENTS.has(String(state.agent).toLowerCase())) {
+        return {
+            ...state,
+            agent: resolveRequestedAgent(state.agent),
+        };
+    }
 
-    console.log("🔥 ROUTER STARTED");
-    console.log("Prompt:", state.prompt);
+    if (LIVE_SEARCH_RE.test(String(state.prompt ?? ""))) {
+        return {
+            ...state,
+            agent: "search",
+        };
+    }
 
     const llm = await getModel("router");
-
-    console.log("🔥 GROQ MODEL CREATED");
 
     const prompt = `You are an agent router.
 
@@ -33,13 +53,16 @@ export const router = async (state) => {
     General conversation,
     explanations,
     learning,
-    questions.
+    questions that do not need live web data.
 
     search:
-    Current events
-    Latest news
-    Research
-    Information gathering
+    Current events,
+    latest news,
+    research,
+    live or real-time facts,
+    current time or date in a city or country,
+    weather, sports scores, stock prices,
+    anything that needs up-to-date information from the web.
 
     coding:
     Code generation
@@ -72,11 +95,7 @@ export const router = async (state) => {
     User query: ${state.prompt}
     `;
 
-    console.log("🔥 CALLING GROQ FROM ROUTER");
-
     const response = await llm.invoke(prompt);
-
-    console.log("🔥 GROQ RESPONSE:", response.content);
 
     return {
         ...state,

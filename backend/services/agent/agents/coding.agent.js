@@ -1,3 +1,3 @@
 export const codingAgent = async (state) => {
-    return { ...state };
+    console.log("🔥 CODING AGENT STARTED");
 }
