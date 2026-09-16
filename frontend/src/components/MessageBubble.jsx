@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { X } from "lucide-react";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { Check, Copy, X } from "lucide-react";
 
 const IMAGE_URL_RE = /^https?:\/\//i;
 
@@ -143,6 +145,63 @@ const ImageLightbox = ({ src, alt, onClose }) => {
   );
 };
 
+const CodeBlock = ({ language, code }) => {
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return undefined;
+    const timer = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(timer);
+  }, [copied]);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  return (
+    <div className="my-3 overflow-hidden rounded-xl border border-white/10 bg-white/[0.04]">
+      <div className="flex items-center justify-between gap-3 border-b border-white/10 bg-white/[0.06] px-3 py-1.5">
+        <span className="text-[12px] font-medium lowercase text-slate-400">
+          {language || "code"}
+        </span>
+        <button
+          type="button"
+          onClick={handleCopy}
+          aria-label="Copy code"
+          className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-medium text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-200 cursor-pointer"
+        >
+          {copied ? <Check size={14} /> : <Copy size={14} />}
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+      <SyntaxHighlighter
+        language={language || "text"}
+        style={oneDark}
+        customStyle={{
+          margin: 0,
+          padding: "0.75rem",
+          background: "transparent",
+          fontSize: "13px",
+          lineHeight: 1.625,
+        }}
+        codeTagProps={{
+          style: {
+            fontFamily:
+              "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+          },
+        }}
+      >
+        {code}
+      </SyntaxHighlighter>
+    </div>
+  );
+};
+
 const MessageBubble = ({ role, content, images }) => {
   const isUser = role === "user";
   const [preview, setPreview] = useState(null);
@@ -199,6 +258,23 @@ const MessageBubble = ({ role, content, images }) => {
           {children}
         </td>
       ),
+      code: ({ className, children, ...props }) => {
+        const language = /language-(\w+)/.exec(className || "")?.[1];
+        const text = String(children).replace(/\n$/, "");
+        const isBlock = Boolean(className) || text.includes("\n");
+        if (!isBlock) {
+          return (
+            <code
+              className="rounded-md bg-white/10 px-1.5 py-0.5 text-[13px]"
+              {...props}
+            >
+              {children}
+            </code>
+          );
+        }
+        return <CodeBlock language={language} code={text} />;
+      },
+      pre: ({ children }) => <>{children}</>,
     }),
     [],
   );
@@ -243,7 +319,7 @@ const MessageBubble = ({ role, content, images }) => {
                 </div>
               )}
 
-              <div className="markdown-body [&_p]:mb-3 [&_p:last-child]:mb-0 [&_ul]:mb-3 [&_ol]:mb-3 [&_li]:mb-1 [&_h1]:text-lg [&_h2]:text-base [&_h2]:font-semibold [&_h2]:mb-2 [&_h3]:font-semibold [&_h3]:mb-2 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:p-3 [&_pre]:bg-white/[0.04]">
+              <div className="markdown-body [&_p]:mb-3 [&_p:last-child]:mb-0 [&_ul]:mb-3 [&_ol]:mb-3 [&_li]:mb-1 [&_h1]:text-lg [&_h2]:text-base [&_h2]:font-semibold [&_h2]:mb-2 [&_h3]:font-semibold [&_h3]:mb-2">
                 <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                   {markdownContent}
                 </Markdown>
