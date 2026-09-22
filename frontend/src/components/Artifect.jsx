@@ -65,6 +65,8 @@ const isHtmlFile = (name = "") => ["html", "htm"].includes(getExt(name));
 const isCssFile = (name = "") => getExt(name) === "css";
 const isJsFile = (name = "") => ["js", "mjs", "cjs"].includes(getExt(name));
 
+
+// it is used to get latest message 
 const getLatestArtifacts = (messages = []) => {
   for (let i = messages.length - 1; i >= 0; i -= 1) {
     const msg = messages[i];

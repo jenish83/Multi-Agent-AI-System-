@@ -90,6 +90,16 @@ Rules:
 - Beautiful spacing
 - Single page unless user asks otherwise.
 
+IMAGES:
+
+Always use unsplash images for the project.
+
+never use place holders
+never use placeholder text.
+never use placeholder images.
+never use placeholder text.
+
+
 Return ONLY valid JSON.
 
 Schema:

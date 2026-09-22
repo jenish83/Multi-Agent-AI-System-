@@ -125,10 +125,10 @@ const ChatInput = () => {
       description: "Read a PPT file and answer questions about it",
     },
     {
-      id: "image",
+      id: "imageGen",
       icon: ImageIcon,
-      label: "Image",
-      description: "Read an image and answer questions about it",
+      label: "imageGen",
+      description: "Generate an image based on the user request",
     }
 ]
 

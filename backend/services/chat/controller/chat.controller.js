@@ -58,7 +58,7 @@ export const updateConversation = async (req, res) => {
         const conversation = await Conversation.findByIdAndUpdate(
             conversationId,
             Object.keys(updates).length ? updates : { updatedAt: new Date() },
-            { new: true }
+            { returnDocument: "after" }
         );
 
         if (!conversation) {

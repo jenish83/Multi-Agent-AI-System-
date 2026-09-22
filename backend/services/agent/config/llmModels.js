@@ -1,6 +1,5 @@
 import { ChatGroq } from "@langchain/groq"
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai"
-import { motion } from "motion/react"
 
 const cleanKey = (value) =>
     (value || "")
@@ -68,6 +67,9 @@ export const getModel = async (agent) => {
         case "search":
             return getGroq();
         case "intent":
+            return getGroq();
+        case "image":
+        case "imageGen":
             return getGroq();
 
         default:

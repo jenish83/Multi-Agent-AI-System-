@@ -3,7 +3,7 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { Check, Copy, X } from "lucide-react";
+import { Check, Copy, Download, X } from "lucide-react";
 
 const IMAGE_URL_RE = /^https?:\/\//i;
 
@@ -47,6 +47,19 @@ const stripInlineImages = (content) => {
     .trim();
 };
 
+/** Remove leftover Pollinations-era image-gen markdown copy. */
+const stripGeneratedImageCopy = (content) => {
+  if (!content || typeof content !== "string") return content;
+
+  return content
+    .replace(/^\s*🖼️?\s*Image Generated Successfully\s*$/gim, "")
+    .replace(/^\s*🗃️?\s*\[Download Image\]\([^)]+\)\s*$/gim, "")
+    .replace(/^\s*🔗?\s*Link expires in \d+ minutes\.?\s*$/gim, "")
+    .replace(/^\s*Download Image\s*$/gim, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+};
+
 const htmlImagesToMarkdown = (content) => {
   if (!content || typeof content !== "string") return content;
 
@@ -74,30 +87,64 @@ const uniqueUrls = (urls) => {
   });
 };
 
-const ChatImage = ({ src, alt, className, onOpen }) => {
+const downloadImage = async (src, filename = "nexora-image.png") => {
+  try {
+    const res = await fetch(src);
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = objectUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(objectUrl);
+  } catch {
+    window.open(src, "_blank", "noopener,noreferrer");
+  }
+};
+
+const ChatImage = ({ src, alt, className, onOpen, showDownload = false }) => {
   const [failed, setFailed] = useState(false);
   const imageSrc = decodeUrl(src);
 
   if (!IMAGE_URL_RE.test(imageSrc) || failed) return null;
 
   return (
-    <button
-      type="button"
-      onClick={() => onOpen?.(imageSrc, alt || "Chat image")}
-      className="chat-image group/image block w-full overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] cursor-zoom-in p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/50"
-    >
-      <img
-        src={imageSrc}
-        alt={alt || "Chat image"}
-        loading="lazy"
-        referrerPolicy="no-referrer"
-        onError={() => setFailed(true)}
-        className={
-          className ||
-          "block w-full h-auto max-h-72 sm:max-h-80 object-cover transition-transform duration-200 group-hover/image:scale-[1.02]"
-        }
-      />
-    </button>
+    <div className="chat-image group/image relative w-full overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+      <button
+        type="button"
+        onClick={() => onOpen?.(imageSrc, alt || "Chat image")}
+        className="block w-full cursor-zoom-in p-0 border-none bg-transparent focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/50"
+      >
+        <img
+          src={imageSrc}
+          alt={alt || "Chat image"}
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={() => setFailed(true)}
+          className={
+            className ||
+            "block w-full h-auto max-h-[28rem] sm:max-h-[32rem] object-contain transition-transform duration-200 group-hover/image:scale-[1.01]"
+          }
+        />
+      </button>
+
+      {showDownload && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            downloadImage(imageSrc, "nexora-image.png");
+          }}
+          aria-label="Download image"
+          className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-black/60 px-2.5 py-1.5 text-[12px] font-medium text-slate-100 opacity-0 backdrop-blur-sm transition-opacity duration-150 group-hover/image:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/50 cursor-pointer hover:bg-black/75"
+        >
+          <Download size={14} />
+          Download
+        </button>
+      )}
+    </div>
   );
 };
 
@@ -125,14 +172,28 @@ const ImageLightbox = ({ src, alt, onClose }) => {
       aria-modal="true"
       aria-label="Image preview"
     >
-      <button
-        type="button"
-        onClick={onClose}
-        className="absolute top-4 right-4 sm:top-6 sm:right-6 z-10 flex items-center justify-center w-10 h-10 rounded-full bg-white/10 border border-white/15 text-slate-100 hover:bg-white/20 transition-colors cursor-pointer"
-        aria-label="Close image preview"
-      >
-        <X size={20} />
-      </button>
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-10 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            downloadImage(src, "nexora-image.png");
+          }}
+          className="flex items-center justify-center gap-1.5 h-10 px-3 rounded-full bg-white/10 border border-white/15 text-slate-100 hover:bg-white/20 transition-colors cursor-pointer text-[13px] font-medium"
+          aria-label="Download image"
+        >
+          <Download size={16} />
+          Download
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex items-center justify-center w-10 h-10 rounded-full bg-white/10 border border-white/15 text-slate-100 hover:bg-white/20 transition-colors cursor-pointer"
+          aria-label="Close image preview"
+        >
+          <X size={20} />
+        </button>
+      </div>
 
       <img
         src={src}
@@ -212,12 +273,15 @@ const MessageBubble = ({ role, content, images }) => {
     return uniqueUrls([...fromResponse, ...fromContent]);
   }, [images, content]);
 
+  const isSingleImage = galleryImages.length === 1;
+
   const markdownContent = useMemo(() => {
     const withMarkdownImages = htmlImagesToMarkdown(content);
-    // Avoid showing the same photos twice when we already render a top gallery
-    return galleryImages.length > 0
-      ? stripInlineImages(withMarkdownImages)
-      : withMarkdownImages;
+    const cleaned =
+      galleryImages.length > 0
+        ? stripGeneratedImageCopy(stripInlineImages(withMarkdownImages))
+        : withMarkdownImages;
+    return cleaned;
   }, [content, galleryImages.length]);
 
   const markdownComponents = useMemo(
@@ -227,7 +291,8 @@ const MessageBubble = ({ role, content, images }) => {
           src={src}
           alt={alt}
           onOpen={(url, label) => setPreview({ src: url, alt: label })}
-          className="block w-full h-auto max-h-72 sm:max-h-80 object-cover transition-transform duration-200 group-hover/image:scale-[1.02]"
+          showDownload
+          className="block w-full h-auto max-h-[28rem] sm:max-h-[32rem] object-contain transition-transform duration-200 group-hover/image:scale-[1.01]"
         />
       ),
       a: ({ href, children, ...props }) => (
@@ -288,7 +353,9 @@ const MessageBubble = ({ role, content, images }) => {
           className={`max-w-[88%] sm:max-w-[80%] min-w-0 rounded-2xl px-3.5 py-2.5 sm:px-4 text-[14px] leading-relaxed break-words ${
             isUser
               ? "bg-indigo-500/20 text-slate-100 border border-indigo-400/20 whitespace-pre-wrap"
-              : "border-white/[0.06]"
+              : isSingleImage
+                ? "w-full sm:max-w-xl border-transparent"
+                : "border-white/[0.06]"
           }`}
         >
           {isUser ? (
@@ -298,8 +365,8 @@ const MessageBubble = ({ role, content, images }) => {
               {galleryImages.length > 0 && (
                 <div
                   className={`mb-3 grid gap-2 ${
-                    galleryImages.length === 1
-                      ? "grid-cols-1 max-w-md"
+                    isSingleImage
+                      ? "grid-cols-1 w-full"
                       : galleryImages.length === 2
                         ? "grid-cols-2"
                         : "grid-cols-2 sm:grid-cols-3"
@@ -311,19 +378,24 @@ const MessageBubble = ({ role, content, images }) => {
                       src={image}
                       alt={`message image ${index + 1}`}
                       onOpen={openPreview}
-                      className={`block w-full object-cover transition-transform duration-200 group-hover/image:scale-[1.02] ${
-                        galleryImages.length === 1 ? "max-h-96 h-auto" : "h-36 sm:h-44"
-                      }`}
+                      showDownload={isSingleImage}
+                      className={
+                        isSingleImage
+                          ? "block w-full h-auto max-h-[28rem] sm:max-h-[32rem] object-contain transition-transform duration-200 group-hover/image:scale-[1.01]"
+                          : "block w-full h-36 sm:h-44 object-contain bg-black/20 transition-transform duration-200 group-hover/image:scale-[1.01]"
+                      }
                     />
                   ))}
                 </div>
               )}
 
-              <div className="markdown-body [&_p]:mb-3 [&_p:last-child]:mb-0 [&_ul]:mb-3 [&_ol]:mb-3 [&_li]:mb-1 [&_h1]:text-lg [&_h2]:text-base [&_h2]:font-semibold [&_h2]:mb-2 [&_h3]:font-semibold [&_h3]:mb-2">
-                <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                  {markdownContent}
-                </Markdown>
-              </div>
+              {markdownContent ? (
+                <div className="markdown-body [&_p]:mb-3 [&_p:last-child]:mb-0 [&_ul]:mb-3 [&_ol]:mb-3 [&_li]:mb-1 [&_h1]:text-lg [&_h2]:text-base [&_h2]:font-semibold [&_h2]:mb-2 [&_h3]:font-semibold [&_h3]:mb-2">
+                  <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                    {markdownContent}
+                  </Markdown>
+                </div>
+              ) : null}
             </>
           )}
         </div>
