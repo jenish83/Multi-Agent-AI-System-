@@ -19,6 +19,17 @@ const messageSchema = new mongoose.Schema({
         type: [String],
         default: [],
     },
+    files: {
+        type: [
+            {
+                kind: { type: String, default: "pdf" },
+                title: { type: String, default: "" },
+                url: { type: String, default: "" },
+                fileName: { type: String, default: "" },
+            },
+        ],
+        default: [],
+    },
     artifacts: {
         type: [
             {

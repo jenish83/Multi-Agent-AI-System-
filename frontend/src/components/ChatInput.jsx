@@ -76,13 +76,20 @@ const ChatInput = () => {
 
     const messages = await getMessages(payload.conversationId);
     const apiImages = Array.isArray(data.images) ? data.images.filter(Boolean) : [];
+    const apiFiles = Array.isArray(data.files) ? data.files.filter(Boolean) : [];
     const nextMessages = (messages || []).map((message, index, list) => {
       const isLastAssistant =
         index === list.length - 1 && message.role === "assistant";
-      if (!isLastAssistant || message.images?.length || !apiImages.length) {
-        return message;
+      if (!isLastAssistant) return message;
+
+      let next = message;
+      if (!message.images?.length && apiImages.length) {
+        next = { ...next, images: apiImages };
       }
-      return { ...message, images: apiImages };
+      if (!message.files?.length && apiFiles.length) {
+        next = { ...next, files: apiFiles };
+      }
+      return next;
     });
     dispatch(setMessages(nextMessages));
   };

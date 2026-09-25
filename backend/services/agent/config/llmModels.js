@@ -9,6 +9,7 @@ const cleanKey = (value) =>
 
 let groq;
 let groqCoding;
+let groqPdf;
 let gemini;
 
 const getGroq = () => {
@@ -42,6 +43,23 @@ const getGroqCoding = () => {
     return groqCoding;
 };
 
+/** Higher token budget for structured PDF document JSON. */
+const getGroqPdf = () => {
+    if (!groqPdf) {
+        const apiKey = cleanKey(process.env.GROQ_API_KEY);
+        if (!apiKey) {
+            throw new Error("GROQ_API_KEY is missing in backend/services/agent/.env");
+        }
+        groqPdf = new ChatGroq({
+            model: "openai/gpt-oss-120b",
+            apiKey,
+            temperature: 0.2,
+            maxTokens: 4000,
+        });
+    }
+    return groqPdf;
+};
+
 const getGemini = () => {
     if (!gemini) {
         gemini = new ChatGoogleGenerativeAI({
@@ -62,6 +80,8 @@ export const getModel = async (agent) => {
         case "coding":
             // OpenRouter deepseek hits shared-pool rate limits; Groq is stable here.
             return getGroqCoding();
+        case "pdf":
+            return getGroqPdf();
         case "chat":
             return getGemini();
         case "search":

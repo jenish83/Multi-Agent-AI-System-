@@ -3,13 +3,14 @@ import graph from "../graph/graph.js";
 import { addMessage, getMemory } from "../config/memory.js";
 import { resolveRequestedAgent } from "../graph/router.js";
 
-const saveToChat = async (conversationId, role, content, images, artifacts) => {
+const saveToChat = async (conversationId, role, content, images, artifacts, files) => {
     await axios.post(`${process.env.CHAT_SERVICE}/save-message`, {
         conversationId,
         role,
         content,
         images,
         artifacts,
+        files,
     });
 };
 
@@ -33,10 +34,11 @@ export const agent = async (req, res) => {
 
         const images = Array.isArray(result.images) ? result.images.filter(Boolean) : [];
         const artifacts = Array.isArray(result.artifacts) ? result.artifacts : [];
+        const files = Array.isArray(result.files) ? result.files.filter(Boolean) : [];
 
         await Promise.all([
             addMessage(conversationId, { role: "assistant", content: response }),
-            saveToChat(conversationId, "assistant", response, images, artifacts),
+            saveToChat(conversationId, "assistant", response, images, artifacts, files),
         ]);
 
         return res.status(200).json({
@@ -44,6 +46,7 @@ export const agent = async (req, res) => {
             conversationId,
             images,
             artifacts,
+            files,
             searchResults: result.searchResults,
         });
     } catch (error) {

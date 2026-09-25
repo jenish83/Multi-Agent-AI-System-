@@ -3,9 +3,11 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { Check, Copy, Download, X } from "lucide-react";
+import { Check, Copy, Download, FileText, X } from "lucide-react";
 
 const IMAGE_URL_RE = /^https?:\/\//i;
+const PDF_DOWNLOAD_RE =
+  /(?:📩\s*)?\*{0,2}\[Download PDF\]\((https?:\/\/[^)\s]+)\)\*{0,2}/i;
 
 const toImageUrl = (image) => {
   if (typeof image === "string") return image.trim();
@@ -58,6 +60,93 @@ const stripGeneratedImageCopy = (content) => {
     .replace(/^\s*Download Image\s*$/gim, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+};
+
+const extractTitleNearPdfLink = (content) => {
+  if (!content) return "Document";
+  const boldMatch = content.match(/\*\*([^*]+)\*\*/);
+  if (boldMatch?.[1]?.trim() && !/download pdf/i.test(boldMatch[1])) {
+    return boldMatch[1].trim();
+  }
+  return "Document";
+};
+
+/** Parse legacy PDF markdown replies into file card data. */
+const extractPdfFilesFromContent = (text) => {
+  if (!text || typeof text !== "string") return [];
+  const match = text.match(PDF_DOWNLOAD_RE);
+  if (!match?.[1]) return [];
+  return [
+    {
+      kind: "pdf",
+      title: extractTitleNearPdfLink(text),
+      url: decodeUrl(match[1]),
+      fileName: "document.pdf",
+    },
+  ];
+};
+
+const stripGeneratedPdfCopy = (content) => {
+  if (!content || typeof content !== "string") return content;
+
+  return content
+    .replace(/^\s*#\s*PDF Generate(?:d)? Successfully\s*$/gim, "")
+    .replace(/^\s*#\s*PDF Generation Failed\s*$/gim, "")
+    .replace(/^\s*\*\*[^*]+\*\*\s*$/gim, "")
+    .replace(PDF_DOWNLOAD_RE, "")
+    .replace(/^\s*_?Link (?:will )?expire(?:s)? in \d+ (?:hours?|minutes?)\.?_?\s*$/gim, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+};
+
+const toPdfFile = (file) => {
+  if (!file || typeof file !== "object") return null;
+  const url = decodeUrl(String(file.url || "").trim());
+  if (!IMAGE_URL_RE.test(url)) return null;
+  return {
+    kind: file.kind || "pdf",
+    title: String(file.title || "Document").trim() || "Document",
+    url,
+    fileName: String(file.fileName || "document.pdf").trim() || "document.pdf",
+  };
+};
+
+const PdfCard = ({ title, url, fileName }) => {
+  const handleDownload = () => {
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  return (
+    <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+      <div className="flex items-start gap-3">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-500/20 border border-indigo-400/20">
+          <FileText size={20} className="text-indigo-300" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="rounded-md bg-indigo-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-300">
+              PDF
+            </span>
+          </div>
+          <p className="mt-1.5 truncate text-[14px] font-medium text-slate-100">
+            {title || "Document"}
+          </p>
+          <p className="mt-0.5 text-[12px] text-slate-500">
+            Link expires in 24 hours
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={handleDownload}
+        aria-label={`Download ${fileName || title || "PDF"}`}
+        className="mt-3.5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-500/90 px-3.5 py-2.5 text-[13px] font-medium text-white transition-colors hover:bg-indigo-500 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/50"
+      >
+        <Download size={15} />
+        Download PDF
+      </button>
+    </div>
+  );
 };
 
 const htmlImagesToMarkdown = (content) => {
@@ -263,7 +352,7 @@ const CodeBlock = ({ language, code }) => {
   );
 };
 
-const MessageBubble = ({ role, content, images }) => {
+const MessageBubble = ({ role, content, images, files }) => {
   const isUser = role === "user";
   const [preview, setPreview] = useState(null);
 
@@ -273,16 +362,29 @@ const MessageBubble = ({ role, content, images }) => {
     return uniqueUrls([...fromResponse, ...fromContent]);
   }, [images, content]);
 
+  const pdfFiles = useMemo(() => {
+    const fromResponse = (Array.isArray(files) ? files : [])
+      .map(toPdfFile)
+      .filter(Boolean)
+      .filter((f) => f.kind === "pdf" || !f.kind);
+    if (fromResponse.length) return fromResponse;
+    return extractPdfFilesFromContent(content);
+  }, [files, content]);
+
   const isSingleImage = galleryImages.length === 1;
+  const hasPdfCard = pdfFiles.length > 0;
 
   const markdownContent = useMemo(() => {
     const withMarkdownImages = htmlImagesToMarkdown(content);
-    const cleaned =
+    let cleaned =
       galleryImages.length > 0
         ? stripGeneratedImageCopy(stripInlineImages(withMarkdownImages))
         : withMarkdownImages;
+    if (hasPdfCard) {
+      cleaned = stripGeneratedPdfCopy(cleaned);
+    }
     return cleaned;
-  }, [content, galleryImages.length]);
+  }, [content, galleryImages.length, hasPdfCard]);
 
   const markdownComponents = useMemo(
     () => ({
@@ -355,7 +457,9 @@ const MessageBubble = ({ role, content, images }) => {
               ? "bg-indigo-500/20 text-slate-100 border border-indigo-400/20 whitespace-pre-wrap"
               : isSingleImage
                 ? "w-full sm:max-w-xl border-transparent"
-                : "border-white/[0.06]"
+                : hasPdfCard
+                  ? "w-full sm:max-w-md border-transparent"
+                  : "border-white/[0.06]"
           }`}
         >
           {isUser ? (
@@ -390,12 +494,29 @@ const MessageBubble = ({ role, content, images }) => {
               )}
 
               {markdownContent ? (
-                <div className="markdown-body [&_p]:mb-3 [&_p:last-child]:mb-0 [&_ul]:mb-3 [&_ol]:mb-3 [&_li]:mb-1 [&_h1]:text-lg [&_h2]:text-base [&_h2]:font-semibold [&_h2]:mb-2 [&_h3]:font-semibold [&_h3]:mb-2">
+                <div
+                  className={`markdown-body [&_p]:mb-3 [&_p:last-child]:mb-0 [&_ul]:mb-3 [&_ol]:mb-3 [&_li]:mb-1 [&_h1]:text-lg [&_h2]:text-base [&_h2]:font-semibold [&_h2]:mb-2 [&_h3]:font-semibold [&_h3]:mb-2 ${
+                    pdfFiles.length > 0 ? "mb-3" : ""
+                  }`}
+                >
                   <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                     {markdownContent}
                   </Markdown>
                 </div>
               ) : null}
+
+              {pdfFiles.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  {pdfFiles.map((file, index) => (
+                    <PdfCard
+                      key={`${file.url}-${index}`}
+                      title={file.title}
+                      url={file.url}
+                      fileName={file.fileName}
+                    />
+                  ))}
+                </div>
+              )}
             </>
           )}
         </div>
