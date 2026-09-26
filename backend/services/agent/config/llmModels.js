@@ -89,6 +89,9 @@ export const getModel = async (agent) => {
         case "intent":
             return getGroq();
         case "image":
+            return getGroq();
+        case "ppt":
+            return getGroq();
         case "imageGen":
             return getGroq();
 
