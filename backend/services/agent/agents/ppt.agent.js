@@ -89,44 +89,54 @@ Use exactly this JSON structure:
 - Ensure the final response can be parsed directly as JSON without modification.
 `;
 
-    const response = await llm.invoke(prompt);
+const response = await llm.invoke(prompt);
 
 const data = JSON.parse(response.content.trim());
 
 console.log("Parsed PPT data:");
 console.log(data);
 
+// Generate PPTX
 const ppt = await generatePPT(data);
 
+// Convert PPTX to buffer
 const buffer = await ppt.write({
-    outputType: "nodebuffer"
+    outputType: "nodebuffer",
 });
 
-const filename = `ppt-${Date.now()}.pptx`;
+// Create S3 file path
+const pptFileName = `ppts/${state.conversationId || "anon"}/${Date.now()}.pptx`;
 
+// Upload to S3
 await uploadToS3(
-    filename,
+    pptFileName,
     buffer,
     "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 );
 
+// Generate temporary download URL
 const downloadUrl = await getFromS3(
-    filename,
+    pptFileName,
     24 * 60 * 60
 );
 
+const title = data.title || "Presentation";
+
 return {
     ...state,
-    aiResponse: `
-# ✅ Presentation Generated
 
-**${data.title}**
+    aiResponse: "Your PowerPoint presentation is ready.",
 
-📩 [Download PPT](${downloadUrl})
-
-Link Expires in 24 hours
-`,
-    artifacts: [],
+    files: [
+        {
+            kind: "ppt",
+            title,
+            url: downloadUrl,
+            fileName:
+                pptFileName.split("/").pop() ||
+                `${title}.pptx`,
+        },
+    ],
 };
 
 

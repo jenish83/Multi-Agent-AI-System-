@@ -3,7 +3,7 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { Check, Copy, Download, FileText, X } from "lucide-react";
+import { Check, Copy, Download, FileText, Presentation, X } from "lucide-react";
 
 const IMAGE_URL_RE = /^https?:\/\//i;
 const PDF_DOWNLOAD_RE =
@@ -12,13 +12,18 @@ const PDF_DOWNLOAD_RE =
 const toImageUrl = (image) => {
   if (typeof image === "string") return image.trim();
   if (image && typeof image === "object") {
-    return String(image.url || image.src || image.image || image.image_url || "").trim();
+    return String(
+      image.url || image.src || image.image || image.image_url || "",
+    ).trim();
   }
   return "";
 };
 
 const decodeUrl = (url = "") =>
-  url.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+  url
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
 
 const getAttr = (tag, name) => {
   const match = tag.match(new RegExp(`${name}\\s*=\\s*["']([^"']+)["']`, "i"));
@@ -40,7 +45,10 @@ const stripInlineImages = (content) => {
   if (!content || typeof content !== "string") return content;
 
   return content
-    .replace(/\[!\[[^\]]*]\((https?:\/\/[^)\s]+)\)\]\((https?:\/\/[^)\s]+)\)/gi, "")
+    .replace(
+      /\[!\[[^\]]*]\((https?:\/\/[^)\s]+)\)\]\((https?:\/\/[^)\s]+)\)/gi,
+      "",
+    )
     .replace(/!\[[^\]]*]\((https?:\/\/[^)\s]+)\)/gi, "")
     .replace(/<a\b[^>]*>\s*<img\b[^>]*>\s*<\/a>/gi, "")
     .replace(/<img\b[^>]*>/gi, "")
@@ -94,24 +102,36 @@ const stripGeneratedPdfCopy = (content) => {
     .replace(/^\s*#\s*PDF Generation Failed\s*$/gim, "")
     .replace(/^\s*\*\*[^*]+\*\*\s*$/gim, "")
     .replace(PDF_DOWNLOAD_RE, "")
-    .replace(/^\s*_?Link (?:will )?expire(?:s)? in \d+ (?:hours?|minutes?)\.?_?\s*$/gim, "")
+    .replace(
+      /^\s*_?Link (?:will )?expire(?:s)? in \d+ (?:hours?|minutes?)\.?_?\s*$/gim,
+      "",
+    )
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 };
 
-const toPdfFile = (file) => {
+const toFile = (file) => {
   if (!file || typeof file !== "object") return null;
+
   const url = decodeUrl(String(file.url || "").trim());
+
   if (!IMAGE_URL_RE.test(url)) return null;
+
   return {
-    kind: file.kind || "pdf",
+    kind: String(file.kind || "pdf").toLowerCase(),
     title: String(file.title || "Document").trim() || "Document",
     url,
-    fileName: String(file.fileName || "document.pdf").trim() || "document.pdf",
+    fileName:
+      String(file.fileName || "").trim() ||
+      (file.kind === "ppt" ? "presentation.pptx" : "document.pdf"),
   };
 };
 
-const PdfCard = ({ title, url, fileName }) => {
+const FileCard = ({ kind, title, url, fileName }) => {
+  const isPpt = kind === "ppt";
+  const label = isPpt ? "PPT" : "PDF";
+  const downloadLabel = isPpt ? "Download PPT" : "Download PDF";
+
   const handleDownload = () => {
     window.open(url, "_blank", "noopener,noreferrer");
   };
@@ -120,30 +140,38 @@ const PdfCard = ({ title, url, fileName }) => {
     <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-white/[0.03] p-4">
       <div className="flex items-start gap-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-500/20 border border-indigo-400/20">
-          <FileText size={20} className="text-indigo-300" />
+          {isPpt ? (
+            <Presentation size={20} className="text-indigo-300" />
+          ) : (
+            <FileText size={20} className="text-indigo-300" />
+          )}
         </div>
+
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="rounded-md bg-indigo-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-300">
-              PDF
+              {label}
             </span>
           </div>
+
           <p className="mt-1.5 truncate text-[14px] font-medium text-slate-100">
             {title || "Document"}
           </p>
+
           <p className="mt-0.5 text-[12px] text-slate-500">
             Link expires in 24 hours
           </p>
         </div>
       </div>
+
       <button
         type="button"
         onClick={handleDownload}
-        aria-label={`Download ${fileName || title || "PDF"}`}
+        aria-label={`Download ${fileName || title || label}`}
         className="mt-3.5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-500/90 px-3.5 py-2.5 text-[13px] font-medium text-white transition-colors hover:bg-indigo-500 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/50"
       >
         <Download size={15} />
-        Download PDF
+        {downloadLabel}
       </button>
     </div>
   );
@@ -357,22 +385,24 @@ const MessageBubble = ({ role, content, images, files }) => {
   const [preview, setPreview] = useState(null);
 
   const galleryImages = useMemo(() => {
-    const fromResponse = uniqueUrls((Array.isArray(images) ? images : []).map(toImageUrl));
+    const fromResponse = uniqueUrls(
+      (Array.isArray(images) ? images : []).map(toImageUrl),
+    );
     const fromContent = uniqueUrls(extractImagesFromContent(content));
     return uniqueUrls([...fromResponse, ...fromContent]);
   }, [images, content]);
 
-  const pdfFiles = useMemo(() => {
+  const filesToDisplay = useMemo(() => {
     const fromResponse = (Array.isArray(files) ? files : [])
-      .map(toPdfFile)
+      .map(toFile)
       .filter(Boolean)
-      .filter((f) => f.kind === "pdf" || !f.kind);
-    if (fromResponse.length) return fromResponse;
-    return extractPdfFilesFromContent(content);
-  }, [files, content]);
+      .filter((file) => file.kind === "pdf" || file.kind === "ppt");
+
+    return fromResponse;
+  }, [files]);
 
   const isSingleImage = galleryImages.length === 1;
-  const hasPdfCard = pdfFiles.length > 0;
+  const hasFileCard = filesToDisplay.length > 0;
 
   const markdownContent = useMemo(() => {
     const withMarkdownImages = htmlImagesToMarkdown(content);
@@ -380,11 +410,11 @@ const MessageBubble = ({ role, content, images, files }) => {
       galleryImages.length > 0
         ? stripGeneratedImageCopy(stripInlineImages(withMarkdownImages))
         : withMarkdownImages;
-    if (hasPdfCard) {
+    if (hasFileCard) {
       cleaned = stripGeneratedPdfCopy(cleaned);
     }
     return cleaned;
-  }, [content, galleryImages.length, hasPdfCard]);
+  }, [content, galleryImages.length, hasFileCard]);
 
   const markdownComponents = useMemo(
     () => ({
@@ -457,7 +487,7 @@ const MessageBubble = ({ role, content, images, files }) => {
               ? "bg-indigo-500/20 text-slate-100 border border-indigo-400/20 whitespace-pre-wrap"
               : isSingleImage
                 ? "w-full sm:max-w-xl border-transparent"
-                : hasPdfCard
+                : hasFileCard
                   ? "w-full sm:max-w-md border-transparent"
                   : "border-white/[0.06]"
           }`}
@@ -496,20 +526,24 @@ const MessageBubble = ({ role, content, images, files }) => {
               {markdownContent ? (
                 <div
                   className={`markdown-body [&_p]:mb-3 [&_p:last-child]:mb-0 [&_ul]:mb-3 [&_ol]:mb-3 [&_li]:mb-1 [&_h1]:text-lg [&_h2]:text-base [&_h2]:font-semibold [&_h2]:mb-2 [&_h3]:font-semibold [&_h3]:mb-2 ${
-                    pdfFiles.length > 0 ? "mb-3" : ""
+                    filesToDisplay.length > 0 ? "mb-3" : ""
                   }`}
                 >
-                  <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                  <Markdown
+                    remarkPlugins={[remarkGfm]}
+                    components={markdownComponents}
+                  >
                     {markdownContent}
                   </Markdown>
                 </div>
               ) : null}
 
-              {pdfFiles.length > 0 && (
+              {filesToDisplay.length > 0 && (
                 <div className="flex flex-col gap-2">
-                  {pdfFiles.map((file, index) => (
-                    <PdfCard
+                  {filesToDisplay.map((file, index) => (
+                    <FileCard
                       key={`${file.url}-${index}`}
+                      kind={file.kind}
                       title={file.title}
                       url={file.url}
                       fileName={file.fileName}
