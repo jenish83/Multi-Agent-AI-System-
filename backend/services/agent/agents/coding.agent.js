@@ -1,6 +1,7 @@
 import { getModel } from "../config/llmModels.js";
 import { getMemory } from "../config/memory.js";
 import { SystemMessage, HumanMessage, AIMessage } from "@langchain/core/messages";
+import { deductCredits } from "../utils/deductCredits.js";
 
 const toText = (content) => {
     if (typeof content === "string") return content;
@@ -236,6 +237,8 @@ Never generate a multi-file project JSON. Answer in markdown only.`;
 
     const response = await llm.invoke(messages);
     const aiResponse = toText(response.content).trim();
+
+    await deductCredits(state.userId, "coding");
 
     return {
         ...state,

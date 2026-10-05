@@ -3,6 +3,7 @@ import axios from "axios";
 import sharp from "sharp";
 import { uploadToS3 } from "../utils/uploadToS3.js";
 import { getFromS3 } from "../utils/getFromS3.js";
+import { deductCredits } from "../utils/deductCredits.js";
 
 const SIGNED_URL_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days (IAM presign max)
 const IMAGE_SIZE = 1280;
@@ -94,6 +95,8 @@ ${state.prompt}
         const filename = `images/${state.conversationId || "anon"}/${Date.now()}.jpg`;
         await uploadToS3(filename, cropped, "image/jpeg");
         const downloadUrl = await getFromS3(filename, SIGNED_URL_TTL_SECONDS);
+
+        await deductCredits(state.userId, "image");
 
         return {
             ...state,

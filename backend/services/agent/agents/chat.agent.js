@@ -1,6 +1,7 @@
 import { getModel } from "../config/llmModels.js";
 import { getMemory } from "../config/memory.js";
 import { SystemMessage, HumanMessage, AIMessage } from "@langchain/core/messages";
+import { deductCredits } from "../utils/deductCredits.js";
 
 // it is a helper function to convert the content to text	
 const toText = (content) => {
@@ -20,6 +21,7 @@ const toText = (content) => {
 export const chatAgent = async (state) => {
     // get the chat model
     const llm = await getModel("chat");
+    
 
     const history = Array.isArray(state.memory)
         ? state.memory
@@ -165,6 +167,7 @@ Always answer the user's actual question rather than blindly following assumptio
     }
 
     const response = await llm.invoke(messages);
+    await deductCredits(state.userId, "chat");
 
     return {
         ...state,

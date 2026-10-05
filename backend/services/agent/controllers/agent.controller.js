@@ -9,7 +9,8 @@ const saveToChat = async (
     content,
     images,
     artifacts,
-    files
+    files,
+    userId
 ) => {
     try {
         const url = `${process.env.CHAT_SERVICE}/save-message`;
@@ -30,7 +31,8 @@ const saveToChat = async (
             images,
             artifacts,
             files,
-        });
+            userId,
+         });
 
         console.log("Chat service response:", response.data);
 
@@ -51,10 +53,11 @@ const saveToChat = async (
 export const agent = async (req, res) => {
     try {
         const { prompt, conversationId, agent: requestedAgent } = req.body;
+        const userId = req.headers["x-user-id"];
 
         await Promise.all([
             addMessage(conversationId, { role: "user", content: prompt }),
-            saveToChat(conversationId, "user", prompt),
+            saveToChat(conversationId, "user", prompt, [], [], []),
         ]);
 
         const result = await graph.invoke({
@@ -62,6 +65,7 @@ export const agent = async (req, res) => {
             conversationId,
             memory: await getMemory(conversationId),
             agent: resolveRequestedAgent(requestedAgent),
+            userId,
         });
 
         const response = result.aiResponse;
@@ -72,7 +76,7 @@ export const agent = async (req, res) => {
 
         await Promise.all([
             addMessage(conversationId, { role: "assistant", content: response }),
-            saveToChat(conversationId, "assistant", response, images, artifacts, files),
+            saveToChat(conversationId, "assistant", response, images, artifacts, files, userId),
         ]);
 
         return res.status(200).json({

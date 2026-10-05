@@ -25,6 +25,7 @@ import {
 import { setMessages } from "../redux/messageSlice";
 import { setUserData } from "../redux/userSlice";
 import logout from "../features/logout";
+import BillingDrawer from "./BillingDrawer";
 
 const iconBtnClass =
   "flex items-center justify-center w-7 h-7 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-white/[0.05] transition-colors duration-150 bg-transparent border-none cursor-pointer";
@@ -45,7 +46,12 @@ const SideBar = ({ collapsed, onCollapsedChange }) => {
     (state) => state.conversation,
   );
   const { userData } = useSelector((state) => state.user);
+
+  const [showBilling, setShowBilling] = useState(false);
+
   const user = userData?.user ?? userData;
+  const planLabel = (user?.plan || "free").toLowerCase();
+  const credits = user?.credits ?? 0;
 
   useEffect(() => {
     const getCov = async () => {
@@ -155,8 +161,8 @@ const SideBar = ({ collapsed, onCollapsedChange }) => {
                   NexoraAI
                 </span>
 
-                <span className="text-[12px] font-medium text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-full tracking-wide">
-                  free
+                <span className="text-[12px] font-medium text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-full tracking-wide capitalize">
+                  {planLabel}
                 </span>
 
                 <button
@@ -293,15 +299,18 @@ const SideBar = ({ collapsed, onCollapsedChange }) => {
                         <p className="text-[13.5px] font-semibold text-slate-100 truncate">
                           {user?.name || "User"}
                         </p>
-                        <p className="text-[10.5px] text-slate-600 mt-px">
-                          Free Plan
+                        <p className="text-[10.5px] text-slate-500 mt-px capitalize">
+                          {planLabel} · {credits} credits
                         </p>
                       </div>
 
                       <div className="flex gap-1">
                         <button
                           type="button"
-                          className="flex items-center justify-center w-7 h-7 rounded-[7px] border-none bg-transparent text-yellow-600 cursor-pointer hover:bg-white/[0.08] hover:text-slate-400 transition-all duration-150"
+                          aria-label="Open billing"
+                          title={`${credits} credits`}
+                          className="flex items-center justify-center w-7 h-7 rounded-[7px] border-none bg-transparent text-amber-400 cursor-pointer hover:bg-white/[0.08] hover:text-amber-300 transition-all duration-150"
+                          onClick={() => setShowBilling(true)}
                         >
                           <Coins size={16} />
                         </button>
@@ -318,14 +327,25 @@ const SideBar = ({ collapsed, onCollapsedChange }) => {
                   )}
 
                   {collapsed && (
-                    <button
-                      type="button"
-                      aria-label="Logout"
-                      className="flex items-center justify-center w-7 h-7 rounded-[7px] border-none bg-transparent text-slate-600 cursor-pointer hover:bg-white/[0.08] hover:text-slate-400 transition-all duration-150"
-                      onClick={handleLogout}
-                    >
-                      <LogOut size={16} />
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        aria-label="Open billing"
+                        title={`${credits} credits`}
+                        className="flex items-center justify-center w-7 h-7 rounded-[7px] border-none bg-transparent text-amber-400 cursor-pointer hover:bg-white/[0.08] hover:text-amber-300 transition-all duration-150"
+                        onClick={() => setShowBilling(true)}
+                      >
+                        <Coins size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Logout"
+                        className="flex items-center justify-center w-7 h-7 rounded-[7px] border-none bg-transparent text-slate-600 cursor-pointer hover:bg-white/[0.08] hover:text-slate-400 transition-all duration-150"
+                        onClick={handleLogout}
+                      >
+                        <LogOut size={16} />
+                      </button>
+                    </>
                   )}
                 </div>
               ) : collapsed ? (
@@ -349,6 +369,11 @@ const SideBar = ({ collapsed, onCollapsedChange }) => {
           </div>
         </div>
       </div>
+
+      <BillingDrawer
+        open={showBilling}
+        onClose={() => setShowBilling(false)}
+      />
 
       {conversationToDelete && (
         <div

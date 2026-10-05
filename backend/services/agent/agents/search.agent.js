@@ -1,4 +1,5 @@
 import { searchTool } from "../config/tavily.config.js";
+import { deductCredits } from "../utils/deductCredits.js";
 
 const extractImages = (raw) => {
   if (!Array.isArray(raw?.images)) return [];
@@ -65,6 +66,8 @@ export const searchAgent = async (state) => {
         images: [],
       };
     }
+
+    await deductCredits(state.userId, "search");
 
     return {
       ...state,
