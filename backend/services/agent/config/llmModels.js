@@ -63,11 +63,11 @@ const getGroqPdf = () => {
 const getGemini = () => {
     if (!gemini) {
         gemini = new ChatGoogleGenerativeAI({
-            model: "gemini-2.5-flash",
+            model: "gemini-3.8-flash",
             apiKey: cleanKey(process.env.GOOGLE_API_KEY),
             maxRetries: 1,
             thinkingConfig: {
-                thinkingBudget: 0,
+                thinkingLevel: "low",
                 includeThoughts: false,
             },
         });

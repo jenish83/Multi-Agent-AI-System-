@@ -166,7 +166,18 @@ Always answer the user's actual question rather than blindly following assumptio
         messages.push(new HumanMessage(state.prompt));
     }
 
-    const response = await llm.invoke(messages);
+    let response;
+    try {
+        response = await llm.invoke(messages);
+    } catch (error) {
+        const message = String(error?.message || error || "");
+        const overloaded = /\b(429|503)\b|high demand|UNAVAILABLE|RESOURCE_EXHAUSTED/i.test(message);
+        if (!overloaded) throw error;
+
+        console.warn("Gemini is busy, falling back to Groq:", message);
+        const fallback = await getModel("intent");
+        response = await fallback.invoke(messages);
+    }
     await deductCredits(state.userId, "chat");
 
     return {

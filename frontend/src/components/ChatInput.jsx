@@ -4,6 +4,7 @@ import sendMessage from "../features/sendMessage";
 import { createConversation } from "../features/createConversation";
 import { updateConversation as saveConversationTitle } from "../features/updateConversation";
 import getMessages from "../features/getMessages";
+import getCurrentUser from "../features/getCurrentUser";
 import { useDispatch, useSelector } from "react-redux";
 import {
   addConversation,
@@ -11,6 +12,7 @@ import {
   updateConversation,
 } from "../redux/conversationSlice";
 import { setMessages } from "../redux/messageSlice";
+import { setUserData } from "../redux/userSlice";
 
 const DEFAULT_TITLE = "New Conversation";
 
@@ -37,6 +39,7 @@ const ChatInput = () => {
   const dispatch = useDispatch();
 
   const { selectedConversation } = useSelector((state) => state.conversation);
+  const { userData } = useSelector((state) => state.user);
   const handleSendMessage = async () => {
     const prompt = value.trim();
     if (!prompt || sending) return;
@@ -74,7 +77,22 @@ const ChatInput = () => {
       }
     }
 
-    const messages = await getMessages(payload.conversationId);
+    const [messages, freshUser] = await Promise.all([
+      getMessages(payload.conversationId),
+      getCurrentUser(),
+    ]);
+    if (freshUser && typeof freshUser.credits === "number") {
+      const base = userData?.user ?? userData ?? {};
+      dispatch(
+        setUserData({
+          ...base,
+          credits: freshUser.credits,
+          totalCredits: freshUser.totalCredits ?? base.totalCredits,
+          plan: freshUser.plan ?? base.plan,
+          planExpiersAt: freshUser.planExpiersAt ?? base.planExpiersAt,
+        }),
+      );
+    }
     const apiImages = Array.isArray(data.images) ? data.images.filter(Boolean) : [];
     const apiFiles = Array.isArray(data.files) ? data.files.filter(Boolean) : [];
     const nextMessages = (messages || []).map((message, index, list) => {
