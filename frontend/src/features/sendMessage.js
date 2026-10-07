@@ -2,9 +2,14 @@ import { api } from "../../utils/axois";
 
 async function sendMessage(payload) {
     try {
-        console.log("📤 Sending payload:", payload);
+        const isUpload = typeof FormData !== "undefined" && payload instanceof FormData;
+        console.log("📤 Sending payload:", isUpload ? "[file upload]" : payload);
 
-        const { data } = await api.post("/api/agent/chat", payload || {});
+        const { data } = await api.post(
+            "/api/agent/chat",
+            isUpload ? payload : payload || {},
+            { timeout: 600_000 },
+        );
 
         console.log("✅ API response:", data);
 
@@ -16,7 +21,7 @@ async function sendMessage(payload) {
         console.error("Response:", error.response?.data);
         console.error("Message:", error.message);
 
-        return null;
+        throw error;
     }
 }
 

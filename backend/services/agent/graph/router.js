@@ -20,6 +20,22 @@ const pickAgent = (content) => {
 };
 
 export const router = async (state) => {
+    const mime = state.file?.mimetype || "";
+
+    if (mime.startsWith("application/pdf")) {
+        return {
+            ...state,
+            agent: "pdfRAG",
+        };
+    }
+
+    if (mime.startsWith("image/")) {
+        return {
+            ...state,
+            agent: "imageAnalyzer",
+        };
+    }
+
     if (state.agent && !AUTO_AGENTS.has(String(state.agent).toLowerCase())) {
         return {
             ...state,

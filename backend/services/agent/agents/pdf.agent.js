@@ -2,7 +2,7 @@ import { getModel } from "../config/llmModels.js";
 import generatePdf from "../utils/generatePdf.js";
 import { uploadToS3 } from "../utils/uploadToS3.js";
 import { getFromS3 } from "../utils/getFromS3.js";
-import { deductCredits } from "../utils/deductCredits.js";
+import { deductCredits, isInsufficientCreditsError } from "../utils/deductCredits.js";
 
 
 export const pdfAgent = async (state) => {
@@ -112,6 +112,7 @@ ${state.prompt}`;
         ],
     };
   } catch (error) {
+    if (isInsufficientCreditsError(error)) throw error;
     console.error("PDF Agent Error:", error);
     return {
         ...state,

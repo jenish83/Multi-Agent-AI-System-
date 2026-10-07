@@ -66,12 +66,23 @@ export const agent = async (req, res) => {
             memory: await getMemory(conversationId),
             agent: resolveRequestedAgent(requestedAgent),
             userId,
+            file: req.file || null,
         });
 
         const response = result.aiResponse;
 
         const images = Array.isArray(result.images) ? result.images.filter(Boolean) : [];
-        const artifacts = Array.isArray(result.artifacts) ? result.artifacts : [];
+        const artifacts = (Array.isArray(result.artifacts) ? result.artifacts : [])
+            .filter((artifact) => artifact?.name)
+            .map((artifact) => {
+                const name = String(artifact.name).trim();
+                const ext = name.split(".").pop()?.toLowerCase() || "text";
+                return {
+                    name,
+                    type: artifact.type || ext,
+                    content: artifact.content ?? null,
+                };
+            });
         const files = Array.isArray(result.files) ? result.files.filter(Boolean) : [];
 
         await Promise.all([
@@ -90,6 +101,19 @@ export const agent = async (req, res) => {
     } catch (error) {
         console.error("AGENT ERROR:", error.message);
         console.error(error.stack);
+
+        const isInsufficientCredits =
+            error.code === "INSUFFICIENT_CREDITS" ||
+            error.cause?.code === "INSUFFICIENT_CREDITS" ||
+            /insufficient credits/i.test(error.message || "");
+
+        if (isInsufficientCredits) {
+            return res.status(402).json({
+                code: "INSUFFICIENT_CREDITS",
+                message: "Insufficient credits. Please buy more credits.",
+            });
+        }
+
         return res.status(500).json({
             message: `agent error: ${error.message}`,
         });

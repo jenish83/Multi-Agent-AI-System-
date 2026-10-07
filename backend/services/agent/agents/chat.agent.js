@@ -166,19 +166,27 @@ Always answer the user's actual question rather than blindly following assumptio
         messages.push(new HumanMessage(state.prompt));
     }
 
+    if (!searchText) {
+        await deductCredits(state.userId, "chat");
+    }
+
     let response;
     try {
-        response = await llm.invoke(messages);
+        response = await llm.invoke(messages, {
+            signal: AbortSignal.timeout(20000),
+        });
     } catch (error) {
         const message = String(error?.message || error || "");
-        const overloaded = /\b(429|503)\b|high demand|UNAVAILABLE|RESOURCE_EXHAUSTED/i.test(message);
-        if (!overloaded) throw error;
+        const unavailable =
+            /\b(429|503)\b|high demand|UNAVAILABLE|RESOURCE_EXHAUSTED|fetch failed|timeout|aborted|ECONNRESET|ENOTFOUND|socket hang up/i.test(
+                message
+            );
+        if (!unavailable) throw error;
 
-        console.warn("Gemini is busy, falling back to Groq:", message);
+        console.warn("Gemini unavailable, falling back to Groq:", message);
         const fallback = await getModel("intent");
         response = await fallback.invoke(messages);
     }
-    await deductCredits(state.userId, "chat");
 
     return {
         ...state,

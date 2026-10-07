@@ -1,5 +1,5 @@
 import { searchTool } from "../config/tavily.config.js";
-import { deductCredits } from "../utils/deductCredits.js";
+import { deductCredits, isInsufficientCreditsError } from "../utils/deductCredits.js";
 
 const extractImages = (raw) => {
   if (!Array.isArray(raw?.images)) return [];
@@ -39,6 +39,16 @@ const formatSearchResults = (raw) => {
   return lines.join("\n");
 };
 
+const SEARCH_TIMEOUT_MS = 45_000;
+
+const withTimeout = (promise, ms, label) =>
+  Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s`)), ms);
+    }),
+  ]);
+
 const normalizeResults = (results) => {
   if (typeof results === "string") {
     try {
@@ -53,9 +63,11 @@ const normalizeResults = (results) => {
 export const searchAgent = async (state) => {
   try {
     const results = normalizeResults(
-      await searchTool.invoke({
-        query: state.prompt,
-      }),
+      await withTimeout(
+        searchTool.invoke({ query: state.prompt }),
+        SEARCH_TIMEOUT_MS,
+        "Web search",
+      ),
     );
 
     if (results?.error) {
@@ -75,6 +87,7 @@ export const searchAgent = async (state) => {
       images: extractImages(results),
     };
   } catch (error) {
+    if (isInsufficientCreditsError(error)) throw error;
     console.error("Error in searchAgent:", error);
     return {
       ...state,

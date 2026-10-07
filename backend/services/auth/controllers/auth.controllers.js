@@ -150,11 +150,17 @@ export const deductCredits = async (req, res) => {
 
         const COST = {
             chat: 1,
+            search: 5,
             serach: 5,
             coding: 10,
             pdf: 10,
+            ppt: 10,
             image: 10,
-            ppt: 10
+            imageGen: 10,
+            imageAnalyzer: 10,
+            "image-gen": 10,
+            "pdf-rag": 10,
+            pdfRAG: 10,
         };
 
         const user = await User.findById(userId);

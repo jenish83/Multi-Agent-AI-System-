@@ -7,7 +7,7 @@ import { useSelector } from "react-redux";
 import { useDispatch } from "react-redux";
 import { setMessages } from "../redux/messageSlice";
 
-const ChatArea = ({ onToggleSidebar }) => {
+const ChatArea = ({ onToggleSidebar, onOpenBilling }) => {
 
   const { selectedConversation } = useSelector((state) => state.conversation);
   const dispatch = useDispatch();
@@ -29,7 +29,7 @@ const ChatArea = ({ onToggleSidebar }) => {
     <div className="flex-1 min-w-0 min-h-0 h-full flex flex-col">
       <Nav onToggleSidebar={onToggleSidebar} />
       <MessageList/>
-      <ChatInput/>
+      <ChatInput onOpenBilling={onOpenBilling} />
     </div>
   );
 };

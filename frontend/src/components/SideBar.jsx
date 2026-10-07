@@ -25,12 +25,11 @@ import {
 import { setMessages } from "../redux/messageSlice";
 import { setUserData } from "../redux/userSlice";
 import logout from "../features/logout";
-import BillingDrawer from "./BillingDrawer";
 
 const iconBtnClass =
   "flex items-center justify-center w-7 h-7 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-white/[0.05] transition-colors duration-150 bg-transparent border-none cursor-pointer";
 
-const SideBar = ({ collapsed, onCollapsedChange }) => {
+const SideBar = ({ collapsed, onCollapsedChange, onOpenBilling }) => {
   const setCollapsed = onCollapsedChange;
   const collapseOnMobile = () => {
     if (typeof window !== "undefined" && window.innerWidth < 1024) {
@@ -46,8 +45,6 @@ const SideBar = ({ collapsed, onCollapsedChange }) => {
     (state) => state.conversation,
   );
   const { userData } = useSelector((state) => state.user);
-
-  const [showBilling, setShowBilling] = useState(false);
 
   const user = userData?.user ?? userData;
   const planLabel = (user?.plan || "free").toLowerCase();
@@ -310,7 +307,7 @@ const SideBar = ({ collapsed, onCollapsedChange }) => {
                           aria-label="Open billing"
                           title={`${credits} credits`}
                           className="flex items-center justify-center w-7 h-7 rounded-[7px] border-none bg-transparent text-amber-400 cursor-pointer hover:bg-white/[0.08] hover:text-amber-300 transition-all duration-150"
-                          onClick={() => setShowBilling(true)}
+                          onClick={onOpenBilling}
                         >
                           <Coins size={16} />
                         </button>
@@ -333,7 +330,7 @@ const SideBar = ({ collapsed, onCollapsedChange }) => {
                         aria-label="Open billing"
                         title={`${credits} credits`}
                         className="flex items-center justify-center w-7 h-7 rounded-[7px] border-none bg-transparent text-amber-400 cursor-pointer hover:bg-white/[0.08] hover:text-amber-300 transition-all duration-150"
-                        onClick={() => setShowBilling(true)}
+                        onClick={onOpenBilling}
                       >
                         <Coins size={16} />
                       </button>
@@ -369,11 +366,6 @@ const SideBar = ({ collapsed, onCollapsedChange }) => {
           </div>
         </div>
       </div>
-
-      <BillingDrawer
-        open={showBilling}
-        onClose={() => setShowBilling(false)}
-      />
 
       {conversationToDelete && (
         <div

@@ -8,6 +8,7 @@ import { setUserData } from "../redux/userSlice";
 import SideBar from "../components/SideBar";
 import ChatArea from "../components/ChatArea";
 import Artifect from "../components/Artifect";
+import BillingDrawer from "../components/BillingDrawer";
 
 const Home = () => {
   const { userData } = useSelector((state) => state.user);
@@ -15,6 +16,7 @@ const Home = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth < 1024 : false,
   );
+  const [showBilling, setShowBilling] = useState(false);
 
   const handleLogin = async (token) => {
     try {
@@ -42,12 +44,18 @@ const Home = () => {
       <SideBar
         collapsed={sidebarCollapsed}
         onCollapsedChange={setSidebarCollapsed}
+        onOpenBilling={() => setShowBilling(true)}
       />
       <ChatArea
         onToggleSidebar={() => setSidebarCollapsed((collapsed) => !collapsed)}
+        onOpenBilling={() => setShowBilling(true)}
       />
       <Artifect />
 
+      <BillingDrawer
+        open={showBilling}
+        onClose={() => setShowBilling(false)}
+      />
 
       {!userData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur">
@@ -76,4 +84,3 @@ const Home = () => {
 }
 
 export default Home;
-

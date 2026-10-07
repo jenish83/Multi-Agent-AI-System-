@@ -41,6 +41,29 @@ const normalizeIntent = (raw) => {
     return INTENTS.find((name) => text.includes(name)) || "CODE_CONVERSATION";
 };
 
+const artifactTypeFromName = (name) => {
+    const ext = String(name).split(".").pop()?.toLowerCase() || "";
+    const map = {
+        html: "html",
+        htm: "html",
+        css: "css",
+        js: "javascript",
+        mjs: "javascript",
+        cjs: "javascript",
+        jsx: "javascript",
+        ts: "typescript",
+        tsx: "typescript",
+        json: "json",
+        md: "markdown",
+        py: "python",
+        java: "java",
+        go: "go",
+        rs: "rust",
+        txt: "text",
+    };
+    return map[ext] || ext || "text";
+};
+
 const parseGeneratedProject = (raw) => {
     const text = toText(raw).trim();
     const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
@@ -53,10 +76,14 @@ const parseGeneratedProject = (raw) => {
         const parsed = JSON.parse(candidate.slice(start, end + 1));
         const files = Array.isArray(parsed?.files)
             ? parsed.files
-                  .map((file) => ({
-                      name: String(file?.name || "").trim(),
-                      content: String(file?.content ?? ""),
-                  }))
+                  .map((file) => {
+                      const name = String(file?.name || "").trim();
+                      return {
+                          name,
+                          type: artifactTypeFromName(name),
+                          content: String(file?.content ?? ""),
+                      };
+                  })
                   .filter((file) => file.name)
             : [];
         return files.length ? files : null;
@@ -187,6 +214,7 @@ export const codingAgent = async (state) => {
         const files = await generateProjectFiles(llm, state.prompt);
 
         if (files) {
+            await deductCredits(state.userId, "coding");
             return {
                 ...state,
                 artifacts: files,
