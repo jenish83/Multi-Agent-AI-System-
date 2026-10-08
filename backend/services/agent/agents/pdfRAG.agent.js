@@ -5,10 +5,12 @@ import { PDFParse } from "pdf-parse";
 import vectorStore from "../config/vectorDb.js";
 import { getModel } from "../config/llmModels.js";
 import { deductCredits } from "../utils/deductCredits.js";
+import { checkAgentLimit } from "../config/agentLimit.js";
 
 export const pdfRAGAgent = async (state) => {
     let parser;
     try {
+        await checkAgentLimit("pdfRAG", state.userId);
         const buffer = fs.readFileSync(state.file.path);
         parser = new PDFParse({ data: buffer });
 
@@ -47,7 +49,9 @@ export const pdfRAGAgent = async (state) => {
             `),
         ];
 
-        const response = await llm.invoke(messages);
+        const response = await llm.invoke(messages, {
+            signal: AbortSignal.timeout(20000),
+        });
         await deductCredits(state.userId, "pdf-rag");
         return {
             ...state,

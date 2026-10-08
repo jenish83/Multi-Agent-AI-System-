@@ -1,6 +1,6 @@
 import { searchTool } from "../config/tavily.config.js";
 import { deductCredits, isInsufficientCreditsError } from "../utils/deductCredits.js";
-
+import { checkAgentLimit, isRateLimitError } from "../config/agentLimit.js";
 const extractImages = (raw) => {
   if (!Array.isArray(raw?.images)) return [];
   return raw.images
@@ -62,6 +62,7 @@ const normalizeResults = (results) => {
 
 export const searchAgent = async (state) => {
   try {
+    await checkAgentLimit("search", state.userId);
     const results = normalizeResults(
       await withTimeout(
         searchTool.invoke({ query: state.prompt }),
@@ -87,7 +88,7 @@ export const searchAgent = async (state) => {
       images: extractImages(results),
     };
   } catch (error) {
-    if (isInsufficientCreditsError(error)) throw error;
+    if (isInsufficientCreditsError(error) || isRateLimitError(error)) throw error;
     console.error("Error in searchAgent:", error);
     return {
       ...state,

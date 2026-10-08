@@ -11,7 +11,11 @@ import {
   setSelectedConversation,
   updateConversation,
 } from "../redux/conversationSlice";
-import { setMessages } from "../redux/messageSlice";
+import {
+  beginThinking,
+  cancelThinking,
+  completeResponse,
+} from "../redux/messageSlice";
 import { setUserData } from "../redux/userSlice";
 
 const DEFAULT_TITLE = "New Conversation";
@@ -31,6 +35,21 @@ const isInsufficientCreditsError = (error) => {
   const code = error?.response?.data?.code;
   return status === 402 || code === "INSUFFICIENT_CREDITS";
 };
+
+const isRateLimitError = (error) => {
+  const status = error?.response?.status;
+  const code = error?.response?.data?.code;
+  const message = error?.response?.data?.message || "";
+  return (
+    status === 429 ||
+    code === "RATE_LIMIT_EXCEEDED" ||
+    /maximum number of requests|rate limit exceeded/i.test(message)
+  );
+};
+
+const rateLimitMessage = (error) =>
+  error?.response?.data?.message ||
+  "You have reached the maximum number of requests for this agent. Please try again later.";
 
 const titleFromChat = (prompt) => {
   const cleaned = prompt.replace(/\s+/g, " ").trim();
@@ -55,10 +74,15 @@ const ChatInput = ({ onOpenBilling }) => {
   const [showCreditsModal, setShowCreditsModal] = useState(false);
   const [sendError, setSendError] = useState("");
   const fileInputRef = useRef(null);
+  const selectedConversationIdRef = useRef(null);
   const dispatch = useDispatch();
 
   const { selectedConversation } = useSelector((state) => state.conversation);
   const { userData } = useSelector((state) => state.user);
+
+  useEffect(() => {
+    selectedConversationIdRef.current = selectedConversation?._id ?? null;
+  }, [selectedConversation?._id]);
 
   useEffect(() => {
     if (!selectedFile?.type?.startsWith("image/")) {
@@ -120,6 +144,14 @@ const ChatInput = ({ onOpenBilling }) => {
 
     setSending(true);
     setSendError("");
+    dispatch(
+      beginThinking({
+        prompt,
+        conversationId: payload.conversationId,
+      }),
+    );
+    setValue("");
+    clearSelectedFile();
 
     let data;
     try {
@@ -135,6 +167,40 @@ const ChatInput = ({ onOpenBilling }) => {
       }
     } catch (error) {
       setSending(false);
+      if (isRateLimitError(error)) {
+        const notice = rateLimitMessage(error);
+        try {
+          const messages = await getMessages(payload.conversationId);
+          const list = Array.isArray(messages) ? messages : [];
+          const last = list[list.length - 1];
+          const nextMessages =
+            last?.role === "assistant" && last?.content === notice
+              ? list
+              : [
+                  ...list,
+                  {
+                    _id: `rate-limit-${Date.now()}`,
+                    role: "assistant",
+                    content: notice,
+                    images: [],
+                    files: [],
+                  },
+                ];
+          if (selectedConversationIdRef.current === payload.conversationId) {
+            dispatch(completeResponse(nextMessages));
+          } else {
+            dispatch(cancelThinking());
+          }
+        } catch (loadError) {
+          dispatch(cancelThinking());
+          setSendError(notice);
+          console.error(loadError);
+        }
+        return;
+      }
+      dispatch(cancelThinking());
+      setValue(typedPrompt);
+      if (file) setSelectedFile(file);
       if (isInsufficientCreditsError(error)) {
         setShowCreditsModal(true);
         return;
@@ -155,10 +221,12 @@ const ChatInput = ({ onOpenBilling }) => {
     }
 
     setSending(false);
-    if (!data) return;
-
-    setValue("");
-    clearSelectedFile();
+    if (!data) {
+      dispatch(cancelThinking());
+      setValue(typedPrompt);
+      if (file) setSelectedFile(file);
+      return;
+    }
 
     if (isDefaultTitle(conversation?.title)) {
       const updated = await saveConversationTitle({
@@ -202,7 +270,12 @@ const ChatInput = ({ onOpenBilling }) => {
       }
       return next;
     });
-    dispatch(setMessages(nextMessages));
+
+    if (selectedConversationIdRef.current === payload.conversationId) {
+      dispatch(completeResponse(nextMessages));
+    } else {
+      dispatch(cancelThinking());
+    }
   };
 
   const agents = [ 

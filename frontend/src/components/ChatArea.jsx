@@ -5,7 +5,7 @@ import ChatInput from "./ChatInput";
 import getMessages from "../features/getMessages";
 import { useSelector } from "react-redux";
 import { useDispatch } from "react-redux";
-import { setMessages } from "../redux/messageSlice";
+import { cancelThinking, setMessages } from "../redux/messageSlice";
 
 const ChatArea = ({ onToggleSidebar, onOpenBilling }) => {
 
@@ -15,6 +15,7 @@ const ChatArea = ({ onToggleSidebar, onOpenBilling }) => {
   useEffect(() => {
     if (!selectedConversation?._id) {
       dispatch(setMessages([]));
+      dispatch(cancelThinking());
       return;
     }
 

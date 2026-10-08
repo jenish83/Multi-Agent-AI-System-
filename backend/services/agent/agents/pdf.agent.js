@@ -3,10 +3,11 @@ import generatePdf from "../utils/generatePdf.js";
 import { uploadToS3 } from "../utils/uploadToS3.js";
 import { getFromS3 } from "../utils/getFromS3.js";
 import { deductCredits, isInsufficientCreditsError } from "../utils/deductCredits.js";
-
+import { checkAgentLimit, isRateLimitError } from "../config/agentLimit.js";
 
 export const pdfAgent = async (state) => {
   try {
+    await checkAgentLimit("pdf", state.userId);
     const llm = await getModel("pdf");
     const prompt = `
 You are an expert professional document writer. You create well-structured, informative content that will be rendered as a PDF.
@@ -112,7 +113,7 @@ ${state.prompt}`;
         ],
     };
   } catch (error) {
-    if (isInsufficientCreditsError(error)) throw error;
+    if (isInsufficientCreditsError(error) || isRateLimitError(error)) throw error;
     console.error("PDF Agent Error:", error);
     return {
         ...state,

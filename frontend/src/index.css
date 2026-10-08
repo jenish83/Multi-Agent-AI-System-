@@ -1,1 +1,83 @@
 @import "tailwindcss";
+
+@keyframes thinking-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes thinking-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes reply-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes thinking-status-fade {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.thinking-pulse-dot {
+  animation: thinking-pulse 1.4s ease-in-out infinite;
+}
+
+.thinking-dot {
+  animation: thinking-dot 1.2s ease-in-out infinite;
+}
+
+.thinking-dot-delay-1 {
+  animation-delay: 0.15s;
+}
+
+.thinking-dot-delay-2 {
+  animation-delay: 0.3s;
+}
+
+.reply-fade-in {
+  animation: reply-fade-in 280ms ease-out both;
+}
+
+.thinking-status-label {
+  display: inline-block;
+  min-width: 5.5rem;
+  animation: thinking-status-fade 220ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thinking-pulse-dot,
+  .thinking-dot,
+  .reply-fade-in,
+  .thinking-status-label {
+    animation: none;
+  }
+}

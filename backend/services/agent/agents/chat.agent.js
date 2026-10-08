@@ -2,6 +2,7 @@ import { getModel } from "../config/llmModels.js";
 import { getMemory } from "../config/memory.js";
 import { SystemMessage, HumanMessage, AIMessage } from "@langchain/core/messages";
 import { deductCredits } from "../utils/deductCredits.js";
+import { checkAgentLimit } from "../config/agentLimit.js";
 
 // it is a helper function to convert the content to text	
 const toText = (content) => {
@@ -20,6 +21,10 @@ const toText = (content) => {
 // it is the chat agent that will be used to answer the user's question
 export const chatAgent = async (state) => {
     // get the chat model
+
+    if (state.agent !== "search") {
+        await checkAgentLimit("chat", state.userId);
+    }
     const llm = await getModel("chat");
     
 

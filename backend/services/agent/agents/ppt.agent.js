@@ -3,10 +3,11 @@ import { generatePPT } from "../utils/generatePPT.js";
 import { uploadToS3 } from "../utils/uploadToS3.js";
 import { getFromS3 } from "../utils/getFromS3.js";
 import { deductCredits } from "../utils/deductCredits.js";
-
+import { checkAgentLimit } from "../config/agentLimit.js";
 
 export const pptAgent = async (state) => {
   try {
+    await checkAgentLimit("ppt", state.userId);
     const llm = await getModel("groq");
 
     const prompt = `

@@ -4,6 +4,7 @@ import sharp from "sharp";
 import { uploadToS3 } from "../utils/uploadToS3.js";
 import { getFromS3 } from "../utils/getFromS3.js";
 import { deductCredits, isInsufficientCreditsError } from "../utils/deductCredits.js";
+import { checkAgentLimit, isRateLimitError } from "../config/agentLimit.js";
 
 const SIGNED_URL_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days (IAM presign max)
 const IMAGE_SIZE = 1280;
@@ -44,6 +45,7 @@ const toText = (content) => {
 
 export const imageGenAgent = async (state) => {
     try {
+        await checkAgentLimit("imageGen", state.userId);
         const llm = await getModel("image");
         const res = await llm.invoke(`
 You are an elite AI image prompt engineer for Flux.
@@ -104,7 +106,7 @@ ${state.prompt}
             images: [downloadUrl],
         };
     } catch (error) {
-        if (isInsufficientCreditsError(error)) throw error;
+        if (isInsufficientCreditsError(error) || isRateLimitError(error)) throw error;
         return {
             ...state,
             aiResponse: `Failed to generate image: ${error.message}`,

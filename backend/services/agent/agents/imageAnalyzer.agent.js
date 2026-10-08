@@ -4,6 +4,7 @@ import sharp from "sharp";
 import { getModel } from "../config/llmModels.js";
 import { SystemMessage, HumanMessage } from "@langchain/core/messages";
 import { deductCredits } from "../utils/deductCredits.js";
+import { checkAgentLimit } from "../config/agentLimit.js";
 
 const MIN_IMAGE_PX = 32;
 
@@ -30,6 +31,7 @@ const prepareImage = async (buffer, mimeType) => {
 
 export const imageAnalyzerAgent = async (state) => {
     try {
+        await checkAgentLimit("imageAnalyzer", state.userId);
         const llm = await getModel("imageAnalyzer");
         const rawBuffer = await readFile(state.file.path);
         const prepared = await prepareImage(rawBuffer, state.file.mimetype || "image/jpeg");
@@ -74,7 +76,9 @@ export const imageAnalyzerAgent = async (state) => {
             }),
         ];
 
-        const response = await llm.invoke(messages);
+        const response = await llm.invoke(messages, {
+            signal: AbortSignal.timeout(20000),
+        });
         await deductCredits(state.userId, "imageAnalyzer");
         return {
             ...state,

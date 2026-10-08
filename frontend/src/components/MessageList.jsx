@@ -1,15 +1,67 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import MessageBubble from "./MessageBubble";
+import LoadingAnimation from "./LoadingAnimation";
 
 const MessageList = () => {
   const { selectedConversation } = useSelector((state) => state.conversation);
-  const { messages } = useSelector((state) => state.message);
+  const { messages, isThinking, pendingPrompt, thinkingConversationId } =
+    useSelector((state) => state.message);
+  const containerRef = useRef(null);
+  const bottomRef = useRef(null);
+  const prevConversationIdRef = useRef(null);
+  const [fadeInMessageId, setFadeInMessageId] = useState(null);
+  const [wasThinking, setWasThinking] = useState(false);
 
-  const isEmpty = messages.length === 0 || !selectedConversation;
+  const showThinking =
+    isThinking &&
+    thinkingConversationId === selectedConversation?._id &&
+    Boolean(pendingPrompt);
+
+  const isEmpty =
+    (messages.length === 0 || !selectedConversation) && !showThinking;
+
+  if (wasThinking !== showThinking) {
+    setWasThinking(showThinking);
+    if (wasThinking && !showThinking) {
+      const lastAssistant = [...messages]
+        .reverse()
+        .find((message) => message.role === "assistant");
+      if (lastAssistant?._id) {
+        setFadeInMessageId(lastAssistant._id);
+      }
+    }
+  }
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || isEmpty) return;
+
+    const conversationChanged =
+      prevConversationIdRef.current !== selectedConversation?._id;
+    prevConversationIdRef.current = selectedConversation?._id ?? null;
+
+    const behavior = conversationChanged ? "auto" : "smooth";
+
+    const frame = requestAnimationFrame(() => {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior,
+      });
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [
+    messages,
+    showThinking,
+    pendingPrompt,
+    selectedConversation?._id,
+    isEmpty,
+  ]);
 
   return (
     <div
+      ref={containerRef}
       className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6
         [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
@@ -45,17 +97,42 @@ const MessageList = () => {
         </div>
       ) : (
         <div className="mx-auto w-full max-w-3xl flex flex-col gap-4 sm:gap-5 pb-2">
-          {messages.map((message) => {
-            return (
+          {messages.map((message) => (
+            <div
+              key={message._id}
+              className={
+                message._id === fadeInMessageId ? "reply-fade-in" : undefined
+              }
+              onAnimationEnd={() => {
+                if (message._id === fadeInMessageId) {
+                  setFadeInMessageId(null);
+                }
+              }}
+            >
               <MessageBubble
-                key={message._id}
                 role={message.role}
                 content={message.content}
                 images={message.images || []}
                 files={message.files || []}
               />
-            );
-          })}
+            </div>
+          ))}
+
+          {showThinking && (
+            <>
+              <MessageBubble
+                role="user"
+                content={pendingPrompt}
+                images={[]}
+                files={[]}
+              />
+              <div className="flex justify-start">
+                <LoadingAnimation />
+              </div>
+            </>
+          )}
+
+          <div ref={bottomRef} aria-hidden="true" />
         </div>
       )}
     </div>

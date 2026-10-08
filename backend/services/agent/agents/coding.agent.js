@@ -2,6 +2,7 @@ import { getModel } from "../config/llmModels.js";
 import { getMemory } from "../config/memory.js";
 import { SystemMessage, HumanMessage, AIMessage } from "@langchain/core/messages";
 import { deductCredits } from "../utils/deductCredits.js";
+import { checkAgentLimit } from "../config/agentLimit.js";
 
 const toText = (content) => {
     if (typeof content === "string") return content;
@@ -186,6 +187,8 @@ const generateProjectFiles = async (llm, userRequest) => {
 };
 
 export const codingAgent = async (state) => {
+
+    await checkAgentLimit("coding", state.userId);
     const intentLlm = await getModel("intent");
     const llm = await getModel("coding");
     const intentRes = await intentLlm.invoke(`
@@ -263,7 +266,9 @@ Never generate a multi-file project JSON. Answer in markdown only.`;
         messages.push(new HumanMessage(state.prompt));
     }
 
-    const response = await llm.invoke(messages);
+    const response = await llm.invoke(messages, {
+        signal: AbortSignal.timeout(20000),
+    });
     const aiResponse = toText(response.content).trim();
 
     await deductCredits(state.userId, "coding");

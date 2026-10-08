@@ -50,10 +50,19 @@ const saveToChat = async (
     }
 };
 
-export const agent = async (req, res) => {
+const rateLimitMessageFrom = (error) => {
+    const candidates = [error?.message, error?.cause?.message];
+    return (
+        candidates.find((message) => /try again in/i.test(message || "")) ||
+        "You have reached the maximum number of requests for this agent. Please try again later."
+    );
+};
+
+export const agent = async (req, res,next) => {
+    const { prompt, conversationId, agent: requestedAgent } = req.body;
+    const userId = req.headers["x-user-id"];
+
     try {
-        const { prompt, conversationId, agent: requestedAgent } = req.body;
-        const userId = req.headers["x-user-id"];
 
         await Promise.all([
             addMessage(conversationId, { role: "user", content: prompt }),
@@ -108,14 +117,39 @@ export const agent = async (req, res) => {
             /insufficient credits/i.test(error.message || "");
 
         if (isInsufficientCredits) {
-            return res.status(402).json({
-                code: "INSUFFICIENT_CREDITS",
-                message: "Insufficient credits. Please buy more credits.",
-            });
+            const error = new Error("Insufficient credits. Please buy more credits.");
+            error.code = "INSUFFICIENT_CREDITS";
+            next(error);
+            return;
         }
 
-        return res.status(500).json({
-            message: `agent error: ${error.message}`,
-        });
+        const isRateLimitExceeded =
+            error.code === "RATE_LIMIT_EXCEEDED" ||
+            error.cause?.code === "RATE_LIMIT_EXCEEDED" ||
+            /maximum number of requests|rate limit exceeded/i.test(error.message || "") ||
+            /maximum number of requests|rate limit exceeded/i.test(error.cause?.message || "");
+
+        if (isRateLimitExceeded) {
+            const message = rateLimitMessageFrom(error);
+            error.message = message;
+            error.status = 429;
+            error.code = "RATE_LIMIT_EXCEEDED";
+
+            if (conversationId) {
+                try {
+                    await Promise.all([
+                        addMessage(conversationId, { role: "assistant", content: message }),
+                        saveToChat(conversationId, "assistant", message, [], [], [], userId),
+                    ]);
+                } catch (saveError) {
+                    console.error("Failed to save rate limit message:", saveError.message);
+                }
+            }
+
+            next(error);
+            return;
+        }
+
+        next(error);
     }
 };
