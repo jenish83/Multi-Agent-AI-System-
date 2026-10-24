@@ -75,7 +75,7 @@ export const imageAnalyzerAgent = async (state) => {
                 ],
             }),
         ];
-
+        
         const response = await llm.invoke(messages, {
             signal: AbortSignal.timeout(20000),
         });
