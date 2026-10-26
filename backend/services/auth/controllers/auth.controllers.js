@@ -6,9 +6,8 @@ import crypto from "node:crypto";
 
 const sessionCookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
+    secure: true,
+    sameSite: "none",
 };
 
 const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60;
