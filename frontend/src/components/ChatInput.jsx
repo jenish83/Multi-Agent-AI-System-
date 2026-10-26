@@ -1,4 +1,4 @@
-import { Code2, Coins, FileText, Globe, Image as ImageIcon, MessageSquare, Mic, Paperclip, Presentation, Send, X, Zap } from "lucide-react";
+import { Code2, Coins, FileText, Globe, Image as ImageIcon, MessageSquare, Paperclip, Presentation, Send, X, Zap } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import sendMessage from "../features/sendMessage";
 import { createConversation } from "../features/createConversation";
@@ -430,9 +430,7 @@ const ChatInput = ({ onOpenBilling }) => {
               <Paperclip size={16} />
             </button>
 
-            <button className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-600 hover:text-slate-400 hover:bg-white/[0.05] border border-transparent hover:border-white/[0.06] transition-all duration-150 bg-transparent cursor-pointer">
-              <Mic size={16} />
-            </button>
+          
           </div>
             <button
             type="button"
