@@ -25,13 +25,17 @@ const toStoredMessage = (message) => {
 
 export const getMemory = async (conversationId) => {
     const key = keyFor(conversationId);
-    const cached = await redis.get(key);
 
-    if (cached) {
-        const parsed = JSON.parse(cached);
-        return (Array.isArray(parsed) ? parsed : [])
-            .map(toStoredMessage)
-            .filter(Boolean);
+    try {
+        const cached = await redis.get(key);
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            return (Array.isArray(parsed) ? parsed : [])
+                .map(toStoredMessage)
+                .filter(Boolean);
+        }
+    } catch (error) {
+        console.error("Redis memory read failed:", error.message);
     }
 
     const messages = await getMessages(conversationId);
@@ -39,7 +43,12 @@ export const getMemory = async (conversationId) => {
         .map(toStoredMessage)
         .filter(Boolean);
 
-    await redis.set(key, JSON.stringify(normalized), "EX", TTL_SECONDS);
+    try {
+        await redis.set(key, JSON.stringify(normalized), "EX", TTL_SECONDS);
+    } catch (error) {
+        console.error("Redis memory write failed:", error.message);
+    }
+
     return normalized;
 };
 
@@ -47,17 +56,21 @@ export const addMessage = async (conversationId, message) => {
     const entry = toStoredMessage(message);
     if (!entry) return;
 
-    const key = keyFor(conversationId);
-    const rawMessages = await redis.get(key);
-    const messages = rawMessages ? JSON.parse(rawMessages) : [];
-    const list = Array.isArray(messages)
-        ? messages.map(toStoredMessage).filter(Boolean)
-        : [];
+    try {
+        const key = keyFor(conversationId);
+        const rawMessages = await redis.get(key);
+        const messages = rawMessages ? JSON.parse(rawMessages) : [];
+        const list = Array.isArray(messages)
+            ? messages.map(toStoredMessage).filter(Boolean)
+            : [];
 
-    list.push(entry);
-    if (list.length > 20) {
-        list.shift();
+        list.push(entry);
+        if (list.length > 20) {
+            list.shift();
+        }
+
+        await redis.set(key, JSON.stringify(list), "EX", TTL_SECONDS);
+    } catch (error) {
+        console.error("Redis memory update failed:", error.message);
     }
-
-    await redis.set(key, JSON.stringify(list), "EX", TTL_SECONDS);
 };

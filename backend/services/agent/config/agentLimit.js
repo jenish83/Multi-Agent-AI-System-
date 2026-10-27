@@ -1,4 +1,4 @@
-import redis from "../../../shared/redis/redis.js";
+import redis, { isRedisUnavailable } from "../../../shared/redis/redis.js";
 
 const WINDOW_SECONDS = 60;
 
@@ -21,13 +21,32 @@ export const checkAgentLimit = async (agent, userId) => {
     const max = Limits[agent] ?? Limits.chat;
     const key = `rate:${agent}:${userId}`;
 
-    const count = await redis.incr(key);
+    let count;
+    try {
+        count = await redis.incr(key);
+    } catch (error) {
+        if (isRedisUnavailable(error)) {
+            console.error("Redis unavailable, skipping agent rate limit:", error.message);
+            return { remaining: max, limit: max };
+        }
+        throw error;
+    }
+
     if (count === 1) {
-        await redis.expire(key, WINDOW_SECONDS);
+        try {
+            await redis.expire(key, WINDOW_SECONDS);
+        } catch (error) {
+            console.error("Redis expire failed:", error.message);
+        }
     }
 
     if (count > max) {
-        const ttl = await redis.ttl(key);
+        let ttl = WINDOW_SECONDS;
+        try {
+            ttl = await redis.ttl(key);
+        } catch (error) {
+            console.error("Redis ttl failed:", error.message);
+        }
         const secondsLeft = ttl > 0 ? ttl : WINDOW_SECONDS;
         const minutes = Math.floor(secondsLeft / 60);
         const seconds = secondsLeft % 60;
