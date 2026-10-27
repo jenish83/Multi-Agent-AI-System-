@@ -27,7 +27,7 @@ app.use("/api/billing", protect, proxyWithHeader(process.env.BILLING_SERVICE));
 app.use(express.json());
 
 app.get("/", (req, res) => {
-    res.json({ message: "Gateway is running" });
+    res.json({ message: "Gateway is started" });
 });
 
 app.listen(port, () => {
