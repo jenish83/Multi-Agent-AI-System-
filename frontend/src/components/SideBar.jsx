@@ -24,7 +24,7 @@ import {
 } from "../redux/conversationSlice";
 import { setMessages } from "../redux/messageSlice";
 import { setUserData } from "../redux/userSlice";
-import logout from "../features/logout";
+import logout from "../features/logout.js";
 
 const iconBtnClass =
   "flex items-center justify-center w-7 h-7 rounded-lg text-slate-500 hover:text-slate-200 hover:bg-white/[0.05] transition-colors duration-150 bg-transparent border-none cursor-pointer";
