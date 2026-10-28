@@ -50,13 +50,22 @@ const SideBar = ({ collapsed, onCollapsedChange, onOpenBilling }) => {
   const planLabel = (user?.plan || "free").toLowerCase();
   const credits = user?.credits ?? 0;
 
+  const userId = user?._id || user?.userId;
+
   useEffect(() => {
+    if (!userId) return;
+
+    let cancelled = false;
     const getCov = async () => {
       const data = await getConversations();
-      dispatch(setConversations(data));
+      if (!cancelled) dispatch(setConversations(data));
     };
     getCov();
-  }, [userData?.user?._id]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, dispatch]);
 
   const handleCreateConversation = async () => {
     try {
