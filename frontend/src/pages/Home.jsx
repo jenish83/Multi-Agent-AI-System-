@@ -17,14 +17,21 @@ const Home = () => {
     typeof window !== "undefined" ? window.innerWidth < 1024 : false,
   );
   const [showBilling, setShowBilling] = useState(false);
+  const [loginError, setLoginError] = useState("");
 
   const handleLogin = async (token) => {
     try {
+      setLoginError("");
       const { data } = await api.post("/api/auth/login", { token });
-      console.log(data);
       dispatch(setUserData(data.user));
     } catch (error) {
       console.error(error);
+      const status = error.response?.status;
+      setLoginError(
+        status === 503
+          ? "Login service is unavailable. Please try again in a moment."
+          : error.response?.data?.message || "Google sign-in failed. Please try again.",
+      );
     }
   };
 
@@ -76,6 +83,9 @@ const Home = () => {
               <FcGoogle size={15} />
               Continue With Google
             </button>
+            {loginError && (
+              <p className="text-[13px] text-red-400">{loginError}</p>
+            )}
           </div>
         </div>
       )}

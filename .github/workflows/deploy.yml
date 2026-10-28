@@ -40,6 +40,18 @@ jobs:
             docker push ${{ env.AWS_ACCOUNT_ID}}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/gateway:latest
         
 
+        - name: Add Firebase admin credentials
+          env:
+            FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          run: |
+            if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+              echo "GitHub secret FIREBASE_SERVICE_ACCOUNT is missing."
+              echo "Paste the contents of backend/services/auth/ServiceAccountKey.json into that secret, then rerun the deploy."
+              exit 1
+            fi
+            printf '%s\n' "$FIREBASE_SERVICE_ACCOUNT" > backend/services/auth/ServiceAccountKey.json
+            python3 -c "import json; json.load(open('backend/services/auth/ServiceAccountKey.json'))"
+
         - name: build auth
           run: | 
             docker build -f backend/services/auth/Dockerfile -t auth-service backend
