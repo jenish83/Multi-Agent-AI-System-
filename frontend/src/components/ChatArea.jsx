@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import Nav from "./Nav";
 import MessageList from "./MessageList";
 import ChatInput from "./ChatInput";
@@ -11,6 +11,7 @@ const ChatArea = ({ onToggleSidebar, onOpenBilling }) => {
 
   const { selectedConversation } = useSelector((state) => state.conversation);
   const dispatch = useDispatch();
+  const [composerPrefill, setComposerPrefill] = useState(null);
 
   useEffect(() => {
     if (!selectedConversation?._id) {
@@ -29,8 +30,12 @@ const ChatArea = ({ onToggleSidebar, onOpenBilling }) => {
   return (
     <div className="flex-1 min-w-0 min-h-0 h-full flex flex-col">
       <Nav onToggleSidebar={onToggleSidebar} />
-      <MessageList/>
-      <ChatInput onOpenBilling={onOpenBilling} />
+      <MessageList
+        onSelectPrompt={(text) =>
+          setComposerPrefill({ id: Date.now(), text })
+        }
+      />
+      <ChatInput onOpenBilling={onOpenBilling} prefill={composerPrefill} />
     </div>
   );
 };

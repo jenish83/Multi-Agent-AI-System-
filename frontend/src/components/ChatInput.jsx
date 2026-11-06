@@ -63,7 +63,7 @@ const titleFromChat = (prompt) => {
   return titled.length > 48 ? `${titled.slice(0, 45).trim()}…` : titled;
 };
 
-const ChatInput = ({ onOpenBilling }) => {
+const ChatInput = ({ onOpenBilling, prefill }) => {
 
   const [selectedAgent, setSelectedAgent] = useState("auto");
   const [value, setValue] = useState("");
@@ -74,6 +74,7 @@ const ChatInput = ({ onOpenBilling }) => {
   const [showCreditsModal, setShowCreditsModal] = useState(false);
   const [sendError, setSendError] = useState("");
   const fileInputRef = useRef(null);
+  const textareaRef = useRef(null);
   const selectedConversationIdRef = useRef(null);
   const dispatch = useDispatch();
 
@@ -83,6 +84,19 @@ const ChatInput = ({ onOpenBilling }) => {
   useEffect(() => {
     selectedConversationIdRef.current = selectedConversation?._id ?? null;
   }, [selectedConversation?._id]);
+
+  useEffect(() => {
+    if (!prefill?.text) return;
+    setValue(prefill.text);
+    const frame = requestAnimationFrame(() => {
+      const el = textareaRef.current;
+      if (!el) return;
+      el.focus();
+      const end = prefill.text.length;
+      el.setSelectionRange(end, end);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [prefill]);
 
   useEffect(() => {
     if (!selectedFile?.type?.startsWith("image/")) {
@@ -366,6 +380,7 @@ const ChatInput = ({ onOpenBilling }) => {
         })}
       </div>
         <textarea
+          ref={textareaRef}
           onChange={ (e) => setValue(e.target.value) }
           onKeyDown={handlePromptKeyDown}
           value={value}

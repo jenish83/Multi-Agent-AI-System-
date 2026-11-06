@@ -3,7 +3,7 @@ import { useSelector } from "react-redux";
 import MessageBubble from "./MessageBubble";
 import LoadingAnimation from "./LoadingAnimation";
 
-const MessageList = () => {
+const MessageList = ({ onSelectPrompt }) => {
   const { selectedConversation } = useSelector((state) => state.conversation);
   const { messages, isThinking, pendingPrompt, thinkingConversationId } =
     useSelector((state) => state.message);
@@ -87,7 +87,8 @@ const MessageList = () => {
                 <button
                   key={s}
                   type="button"
-                  className="px-3 sm:px-4 py-2 rounded-full border border-white/10 bg-white/[0.03] text-[12px] sm:text-[13px] font-medium text-slate-400 tracking-tight hover:bg-white/[0.06] hover:text-slate-300 transition-colors"
+                  onClick={() => onSelectPrompt?.(s)}
+                  className="px-3 sm:px-4 py-2 rounded-full border border-white/10 bg-white/[0.03] text-[12px] sm:text-[13px] font-medium text-slate-400 tracking-tight hover:bg-white/[0.06] hover:text-slate-300 transition-colors cursor-pointer"
                 >
                   {s}
                 </button>
